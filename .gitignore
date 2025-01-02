@@ -57,3 +57,5 @@ docs/doxygen/latex/
 py_neon/.idea/
 
 py_neon/Neon.log
+
+py/.idea/
