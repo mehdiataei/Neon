@@ -215,10 +215,10 @@ auto dGrid_get_span(
 // Helper macro to remove parentheses
 #define UNPAREN(...) __VA_ARGS__
 
-#define DO_EXPORT(TYPE, N, FOO_NAME, RET, ...)                             \
-    extern "C" auto FOO_NAME##_##TYPE(EXPAND_PAIRS(N, __VA_ARGS__)) -> RET \
-    {                                                                      \
-        return FOO_NAME<TYPE>(EXTRACT_NAMES(N, __VA_ARGS__));              \
+#define DO_EXPORT(TYPE, N, FOO_NAME, RET, ...)                           \
+    extern "C" auto FOO_NAME##_##TYPE(EXPAND_PAIRS(N, __VA_ARGS__))->RET \
+    {                                                                    \
+        return FOO_NAME<TYPE>(EXTRACT_NAMES(N, __VA_ARGS__));            \
     }
 
 
@@ -371,7 +371,6 @@ DO_EXPORT(uint64, 5, dGrid_dField_get_partition, int, void*, field_handle, declt
 
 DO_EXPORT(float32, 5, dGrid_dField_get_partition, int, void*, field_handle, decltype(Neon::dGrid::Partition<float32, 0>())*, partitionPtr, Neon::Execution, execution, int, device, Neon::DataView, data_view);
 DO_EXPORT(float64, 5, dGrid_dField_get_partition, int, void*, field_handle, decltype(Neon::dGrid::Partition<float64, 0>())*, partitionPtr, Neon::Execution, execution, int, device, Neon::DataView, data_view);
-
 
 
 auto dGrid_span_size(
@@ -590,6 +589,58 @@ DO_EXPORT(uint64, 2, dGrid_dField_update_device_data, int, void*, fieldHandle, i
 
 DO_EXPORT(float32, 2, dGrid_dField_update_device_data, int, void*, fieldHandle, int, streamSetId);
 DO_EXPORT(float64, 2, dGrid_dField_update_device_data, int, void*, fieldHandle, int, streamSetId);
+
+
+template <typename T>
+auto dGrid_dField_to_vti(
+    void*         fieldHandle,
+    const char*  fname,
+    const char*   fieldName)
+    -> int
+{
+#ifdef NEON_USE_NVTX
+    nvtxRangePush("dGrid_dField_to_vti");
+#endif
+
+    NEON_PY_PRINT_BEGIN(fieldHandle);
+
+    using Grid = Neon::dGrid;
+    using Field = Grid::Field<T, 0>;
+
+    Field* fieldPtr = reinterpret_cast<Field*>(fieldHandle);
+
+    if (fieldPtr == nullptr) {
+        std::cout << "invalid field" << std::endl;
+        return -1;
+    }
+    std::cout << "dGrid_dField_to_vti - " << fname << " - " << fieldName << std::endl;
+    fieldPtr->ioToVtk(fname,
+                      fieldName);
+    //                      bool               includeDomain = false,
+    //                      Neon::IoFileType   ioFileType = Neon::IoFileType::ASCII,
+    //                      bool               isNodeSpace = false
+    //fieldPtr->updateHostData(streamSetId);
+
+#ifdef NEON_USE_NVTX
+    nvtxRangePop();
+#endif
+    NEON_PY_PRINT_END(fieldHandle);
+
+    return 0;
+}
+
+DO_EXPORT(int8, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(uint8,3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(bool, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+
+DO_EXPORT(int32,3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(uint32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+
+DO_EXPORT(int64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(uint64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+
+DO_EXPORT(float32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(float64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
 
 
 extern "C" auto dGrid_dSpan_get_member_field_offsets(size_t* offsets,

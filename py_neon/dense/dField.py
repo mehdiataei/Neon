@@ -69,7 +69,7 @@ class dField(object):
             if match_found:
                 break
         if not match_found:
-            raise Exception('dField: Unsupported data type')
+            raise Exception(f'dField: Unsupported data type ({self.dtype})')
 
     def _help_load_api(self):
         # Importing new functions
@@ -131,6 +131,13 @@ class dField(object):
                                            ctypes.c_int]
         self.api_update_device.restype = ctypes.c_int
 
+        # export vti
+        self.api_export_vti = getattr(lib_obj, f'dGrid_dField_to_vti{self.suffix}')
+        self.api_update_device.argtypes = [self.handle_type,
+                                           ctypes.c_char_p,
+                                           ctypes.c_char_p]
+        self.api_update_device.restype = ctypes.c_int
+
     def _help_field_new(self):
         if self.handle == 0:
             raise Exception('dGrid: Invalid handle')
@@ -189,12 +196,16 @@ class dField(object):
                               cardinality,
                               self.field_type(newValue))
 
-    def updateHostData(self, streamSetId: ctypes.c_int):
+    def update_host(self, streamSetId: ctypes.c_int):
         return self.api_update_host(self.handle,
                                     streamSetId)
 
-    def updateDeviceData(self, streamSetId: ctypes.c_int):
+    def update_device(self, streamSetId: ctypes.c_int):
         return self.api_update_device(self.handle, streamSetId)
+
+    def export_vti(self, filename: str,
+                   field_name: str = "field"):
+        self.api_export_vti(self.handle, filename.encode('utf-8'), field_name.encode('utf-8'))
 
     @property
     def type(self):
