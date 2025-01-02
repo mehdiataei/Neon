@@ -5,34 +5,26 @@ update_pythonpath()
 import os
 
 import warp as wp
-
-import wpne
-import neon as ne
-from neon import Index_3d
-from neon.dense import dSpan
+import neon
 
 
-def _field_int():
+
+def test_field_int():
     # Get the path of the current script
     script_path = __file__
     # Get the directory containing the script
     script_dir = os.path.dirname(os.path.abspath(script_path))
 
     def conainer_kernel_generator(field):
-        partition = field.get_partition(ne.Execution.device(), 0, ne.DataView.standard())
-        print(f"?????? partition {id(partition)}, {type(partition)}")
-
-        # from wpne.dense.partition import NeonDensePartitionInt
-        # print(f"?????? NeonDensePartitionInt {id(NeonDensePartitionInt)}, {type(NeonDensePartitionInt)}, {partition.get_my_name()}")
-
+        partition = field.get_partition(neon.Execution.device(), 0, neon.DataView.standard())
         @wp.func
-        def user_foo(idx: ne.dense.dIndex):
+        def user_foo(idx: neon.dense.dIndex):
             wp.neon_print(idx)
             value = wp.neon_read(partition, idx, 0)
-            print(33)
+            print(value)
 
         @wp.kernel
-        def neon_kernel_test(span: dSpan):
+        def neon_kernel_test(span: neon.dense.dSpan):
             is_valid = wp.bool(True)
             myIdx = wp.neon_set(span, is_valid)
             if is_valid:
@@ -46,25 +38,16 @@ def _field_int():
     wp.verbose_warnings = True
 
     wp.init()
-
-    wp.build.set_cpp_standard("c++17")
-    wp.build.add_include_directory(script_dir)
-    wp.build.add_preprocessor_macro_definition('NEON_WARP_COMPILATION')
-
-    # It's a good idea to always clear the kernel cache when developing new native or codegen features
-    wp.build.clear_kernel_cache()
-
-    # !!! DO THIS BEFORE DEFINING/USING ANY KERNELS WITH CUSTOM TYPES
-    wpne.init()
+    neon.init()
     dev_idx = 0
     with wp.ScopedDevice(f"cuda:{dev_idx}"):
-        bk = ne.Backend(runtime=ne.Backend.Runtime.stream,
+        bk = neon.Backend(runtime=neon.Backend.Runtime.stream,
                         dev_idx_list=[dev_idx])
 
-        grid = ne.dense.dGrid(bk, Index_3d(10, 10, 10))
-        span_device_id0_standard = grid.get_span(ne.Execution.device(),
+        grid = neon.dense.dGrid(bk, neon.Index_3d(10, 10, 10))
+        span_device_id0_standard = grid.get_span(neon.Execution.device(),
                                                  0,
-                                                 ne.DataView.standard())
+                                                 neon.DataView.standard())
         print(span_device_id0_standard)
 
         field = grid.new_field(cardinality=1, dtype=wp.int32)
@@ -76,4 +59,4 @@ def _field_int():
 
 
 if __name__ == "__main__":
-    _field_int()
+    test_field_int()

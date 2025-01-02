@@ -144,7 +144,7 @@ class dGrid(object):
                   cardinality: int,
                   dtype) -> dField:
         cardinality = ctypes.c_int(cardinality)
-        field = dField(neon=self.neon,
+        field = dField(neon_gate=self.neon_gate,
                        grid_handle=self.grid_handle,
                        cardinality=cardinality,
                        py_grid=self,

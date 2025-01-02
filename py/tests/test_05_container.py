@@ -4,15 +4,13 @@ update_pythonpath()
 
 import os
 import warp as wp
-import wpne
-import neon as ne
-from neon import Index_3d
+import neon
 import typing
 
 
-@wpne.Container.factory
+@neon.Container.factory
 def get_solver_operator_container(field):
-    def setup(loader: wpne.Loader):
+    def setup(loader: neon.Loader):
         loader.declare_execution_scope(field.get_grid())
 
         f_read = loader.get_read_handel(field)
@@ -50,31 +48,22 @@ def test_container_int():
     wp.verbose_warnings = True
 
     wp.init()
+    neon.init()
 
-    wp.build.set_cpp_standard("c++17")
-    wp.build.add_include_directory(script_dir)
-    wp.build.add_preprocessor_macro_definition('NEON_WARP_COMPILATION')
-
-    # It's a good idea to always clear the kernel cache when developing new native or codegen features
-    wp.build.clear_kernel_cache()
-
-    # !!! DO THIS BEFORE DEFINING/USING ANY KERNELS WITH CUSTOM TYPES
-    wpne.init()
-
-    bk = ne.Backend(runtime=ne.Backend.Runtime.stream,
+    bk = neon.Backend(runtime=neon.Backend.Runtime.stream,
                     dev_idx_list=[0])
 
-    dim = Index_3d(1, 1, 3)
-    grid = ne.dense.dGrid(bk, dim)
+    dim = neon.Index_3d(1, 1, 3)
+    grid = neon.dense.dGrid(bk, dim)
     field = grid.new_field(cardinality=1, dtype='int32')
 
-    def set_value(idx: Index_3d):
+    def set_value(idx: neon.Index_3d):
         return idx.x + idx.y + idx.z
 
     for z in range(0, dim.z):
         for y in range(0, dim.y):
             for x in range(0, dim.x):
-                idx = Index_3d(x, y, z)
+                idx = neon.Index_3d(x, y, z)
                 newValue = set_value(idx)
                 print(f"Init@({x},{y},{z}): [value]{newValue} ")
                 field.write(idx=idx,
@@ -87,13 +76,13 @@ def test_container_int():
     solver_operator = get_solver_operator_container(field)
     solver_operator.run(
         stream_idx=0,
-        data_view=ne.DataView.standard(),
-        container_runtime=wpne.Container.ContainerRuntime.warp)
+        data_view=neon.DataView.standard(),
+        container_runtime=neon.Container.ContainerRuntime.warp)
     print('=====================')
     solver_operator.run(
         stream_idx=0,
-        data_view=ne.DataView.standard(),
-        container_runtime=wpne.Container.ContainerRuntime.neon)
+        data_view=neon.DataView.standard(),
+        container_runtime=neon.Container.ContainerRuntime.neon)
 
     field.update_host(0)
     wp.synchronize()
@@ -101,7 +90,7 @@ def test_container_int():
     for z in range(0, dim.z):
         for y in range(0, dim.y):
             for x in range(0, dim.x):
-                idx = Index_3d(x, y, z)
+                idx = neon.Index_3d(x, y, z)
                 newValue = set_value(idx)
                 newValue = newValue*3
                 newValueRead = field.read(idx=idx,

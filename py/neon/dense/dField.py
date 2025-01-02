@@ -1,10 +1,6 @@
 import ctypes
 
 import neon
-import neon.dense.dPartition as dPartition
-from neon.dataview import DataView as NeDataView
-from neon.execution import Execution as NeExecution
-from neon.index_3d import Index_3d
 import warp as wp
 
 
@@ -13,7 +9,7 @@ import warp as wp
 
 class dField(object):
     def __init__(self,
-                 neon: neon.Gate,
+                 neon_gate: neon.Gate,
                  grid_handle: ctypes.c_void_p,
                  cardinality: ctypes.c_int,
                  dtype,
@@ -24,7 +20,7 @@ class dField(object):
         if grid_handle == 0:
             raise Exception('DField: Invalid handle')
 
-        self.neon = neon
+        self.neon_gate:neon.Gate =  neon_gate
         self.handle_type = ctypes.c_void_p
         self.handle: ctypes.c_uint64 = ctypes.c_void_p(0)
         self.grid_handle = grid_handle
@@ -48,7 +44,7 @@ class dField(object):
             if (is_native or is_warp or is_ctypes):
                 self.suffix = f'_{s_native}'
                 self.field_type = s_cytpes
-                self.Partition_type = getattr(dPartition, f'dPartition{self.suffix}')
+                self.Partition_type = getattr(neon.dense.dPartition, f'dPartition{self.suffix}')
                 return True
             return False
 
@@ -73,7 +69,7 @@ class dField(object):
     def _help_load_api(self):
         # Importing new functions
         ## new_field
-        lib_obj = self.neon.lib
+        lib_obj = self.neon_gate.lib
 
         # ---------------------------------------------------------------------
         self.api_new = getattr(lib_obj, f'dGrid_dField_new{self.suffix}')
@@ -92,16 +88,16 @@ class dField(object):
         self.api_get_partition.argtypes = [
             self.handle_type,
             ctypes.POINTER(self.Partition_type),  # the span object
-            NeExecution,  # the execution type
+            neon.Execution,  # the execution type
             ctypes.c_int,  # the device id
-            NeDataView,  # the data view
+            neon.DataView,  # the data view
         ]
         self.api_get_partition.restype = ctypes.c_int
 
-        # size partition
-        self.neon.lib.dGrid_dField_partition_size.argtypes = [
-            ctypes.POINTER(self.Partition_type)]
-        self.neon.lib.dGrid_dField_partition_size.restype = ctypes.c_int
+        # # size partition
+        # self.neon.lib.dGrid_dField_partition_size.argtypes = [
+        #     ctypes.POINTER(self.Partition_type)]
+        # self.neon.lib.dGrid_dField_partition_size.restype = ctypes.c_int
 
         # field read
         self.api_read = getattr(lib_obj, f'dGrid_dField_read{self.suffix}')
@@ -132,10 +128,10 @@ class dField(object):
 
         # export vti
         self.api_export_vti = getattr(lib_obj, f'dGrid_dField_to_vti{self.suffix}')
-        self.api_update_device.argtypes = [self.handle_type,
+        self.api_export_vti.argtypes = [self.handle_type,
                                            ctypes.c_char_p,
                                            ctypes.c_char_p]
-        self.api_update_device.restype = ctypes.c_int
+        self.api_export_vti.restype = ctypes.c_int
 
     def _help_field_new(self):
         if self.handle == 0:
@@ -158,9 +154,9 @@ class dField(object):
         return self.py_grid
 
     def get_partition(self,
-                      execution: NeExecution,
+                      execution: neon.Execution,
                       c: ctypes.c_int,
-                      data_view: NeDataView
+                      data_view: neon.DataView
                       ):
         if self.handle == 0:
             raise Exception('dField: Invalid handle')
@@ -184,12 +180,12 @@ class dField(object):
         # # print(f"Partition {partition}")
         return partition
 
-    def read(self, idx: Index_3d, cardinality: ctypes.c_int):
+    def read(self, idx: neon.Index_3d, cardinality: ctypes.c_int):
         return self.api_read(self.handle,
                              idx,
                              cardinality)
 
-    def write(self, idx: Index_3d, cardinality: ctypes.c_int, newValue):
+    def write(self, idx: neon.Index_3d, cardinality: ctypes.c_int, newValue):
         return self.api_write(self.handle,
                               idx,
                               cardinality,
@@ -200,7 +196,8 @@ class dField(object):
                                     streamSetId)
 
     def update_device(self, streamSetId: ctypes.c_int):
-        return self.api_update_device(self.handle, streamSetId)
+        return self.api_update_device(self.handle,
+                                      streamSetId)
 
     def export_vti(self, filename: str,
                    field_name: str = "field"):

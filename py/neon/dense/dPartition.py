@@ -9,40 +9,23 @@ from neon import Index_3d
 from neon import Ngh_idx
 
 class dPartitionGeneric(ctypes.Structure):
-    # _fields_ = [
-    #     ("mDataView", neon.DataView),
-    #     ("mDim", neon.Index_3d),
-    #     ("mMem", ctypes.POINTER(ctypes.c_int)),
-    #     ("mZHaloRadius", ctypes.c_int),
-    #     ("mZBoundaryRadius", ctypes.c_int),
-    #     ("mPitch1", ctypes.c_uint64),
-    #     ("mPitch2", ctypes.c_uint64),
-    #     ("mPitch3", ctypes.c_uint64),
-    #     ("mPitch4", ctypes.c_uint64),
-    #     ("mPrtID", ctypes.c_int),
-    #     ("mOrigin", neon.Index_3d),
-    #     ("mCardinality", ctypes.c_int),
-    #     ("mFullGridSize", neon.Index_3d),
-    #     ("mPeriodicZ", ctypes.c_bool),
-    #     ("mStencil", ctypes.POINTER(ctypes.c_int)),
-    # ]
 
     def __init__(self):
         try:
-            self.neon: neon = neon()
+            self.neon_gate = neon.Gate()
         except Exception as e:
             self.handle: ctypes.c_uint64 = ctypes.c_uint64(0)
             raise Exception('Failed to initialize PyNeon: ' + str(e))
         self._help_load_api()
 
     def _help_load_api(self):
-        self.neon.lib.dGrid_dField_dPartition_get_member_field_offsets.argtypes = [ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
-        self.neon.lib.dGrid_dField_dPartition_get_member_field_offsets.restype = None
+        self.neon_gate.lib.dGrid_dField_dPartition_get_member_field_offsets.argtypes = [ctypes.POINTER(ctypes.c_size_t), ctypes.POINTER(ctypes.c_size_t)]
+        self.neon_gate.lib.dGrid_dField_dPartition_get_member_field_offsets.restype = None
 
     def get_cpp_field_offsets(self):
         length = ctypes.c_size_t()
         offsets = (ctypes.c_size_t * 15)()  # Since there are 15 offsets
-        self.neon.lib.dGrid_dField_dPartition_get_member_field_offsets(offsets, ctypes.byref(length))
+        self.neon_gate.lib.dGrid_dField_dPartition_get_member_field_offsets(offsets, ctypes.byref(length))
         return [offsets[i] for i in range(length.value)]
 
     def __str__(self):
