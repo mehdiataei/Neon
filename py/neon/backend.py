@@ -96,7 +96,6 @@ class Backend(object):
                                             self.n_dev,
                                             dev_array)
 
-        print(f"NEON PYTHON self.backend_handle: {hex(self.backend_handle.value)}")
         if res != 0:
             raise Exception('DBackend: Failed to initialize backend')
 

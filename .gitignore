@@ -59,3 +59,9 @@ py_neon/.idea/
 py_neon/Neon.log
 
 py/.idea/
+
+py/neon/tool/Neon.log
+
+py/neon/Neon.log
+
+py/tests/Neon.log
