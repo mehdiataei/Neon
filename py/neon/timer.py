@@ -66,8 +66,6 @@ class Timer(object):
     def help_new(self):
         
         res = self.api_new(ctypes.pointer(self.handle))
-
-        print(f"NEON PYTHON self.handle: {hex(self.handle.value)}")
         if res != 0:
             raise Exception('DBackend: Failed to initialize backend')
 
