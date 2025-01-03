@@ -4,10 +4,7 @@ update_pythonpath()
 
 import os
 import warp as wp
-import wpne
-import neon as ne
-from neon import Index_3d
-from neon.dense import dSpan
+import neon 
 import typing
 from typing import Any
 
@@ -23,9 +20,9 @@ def warp_AXPY(
         y[c, k, j, i] = x[c, k, j, i] + alpha * y[c, k, j, i]
 
 
-@wpne.Container.factory
+@neon.Container.factory
 def get_AXPY(f_X, f_Y, alpha: Any):
-    def axpy(loader: wpne.Loader):
+    def axpy(loader: neon.Loader):
         loader.declare_execution_scope(f_Y.get_grid())
 
         f_x = loader.get_read_handel(f_X)
@@ -43,10 +40,9 @@ def get_AXPY(f_X, f_Y, alpha: Any):
             axpy_res = x + alpha * y
             # wp.print(alpha)
             wp.neon_write(f_y, idx, c, axpy_res)
-            pId = wp.neon_partition_id(f_x)
-
-            wp.neon_print_dbg(f_x)
-            wp.printf("Pid %d - x %d y %d alpha %d r %d\n", pId, x, y, alpha, axpy_res)
+            #pId = wp.neon_partition_id(f_x)
+            #wp.neon_print_dbg(f_x)
+            #wp.printf("Pid %d - x %d y %d alpha %d r %d\n", pId, x, y, alpha, axpy_res)
             #wp.neon_print(idx)
         loader.declare_kernel(foo)
 
@@ -55,9 +51,9 @@ def get_AXPY(f_X, f_Y, alpha: Any):
 
 def execution(nun_devs: int,
               num_card: int,
-              dim: ne.Index_3d,
+              dim: neon.Index_3d,
               dtype,
-              container_runtime: wpne.Container.ContainerRuntime):
+              container_runtime: neon.Container.ContainerRuntime):
     # Get the path of the current script
     script_path = __file__
     # Get the directory containing the script
@@ -78,13 +74,13 @@ def execution(nun_devs: int,
     wp.build.clear_kernel_cache()
 
     # !!! DO THIS BEFORE DEFINING/USING ANY KERNELS WITH CUSTOM TYPES
-    wpne.init()
+    neon.init()
 
     dev_idx_list = list(range(nun_devs))
-    bk = ne.Backend(runtime=ne.Backend.Runtime.stream,
+    bk = neon.Backend(runtime=neon.Backend.Runtime.stream,
                     dev_idx_list=dev_idx_list)
 
-    grid = ne.dense.dGrid(bk, dim, sparsity=None, stencil=[[0, 0, 0]])
+    grid = neon.dense.dGrid(bk, dim, sparsity=None, stencil=[[0, 0, 0]])
     field_X = grid.new_field(cardinality=num_card, dtype=dtype)
     field_Y = grid.new_field(cardinality=num_card, dtype=dtype)
     field_result = grid.new_field(cardinality=num_card, dtype=dtype)
@@ -97,8 +93,8 @@ def execution(nun_devs: int,
 
     alpha = dtype(2)
 
-    def golden_axpy(index: ne.Index_3d, cardinality: int):
-        def golden_axpy_input(idx: ne.Index_3d, cardinality: int):
+    def golden_axpy(index: neon.Index_3d, cardinality: int):
+        def golden_axpy_input(idx: neon.Index_3d, cardinality: int):
             return (dtype(idx.x + idx.y + idx.z + cardinality), dtype(idx.x + idx.y + idx.z + cardinality + 1))
 
         x, y = golden_axpy_input(index, cardinality)
@@ -111,7 +107,7 @@ def execution(nun_devs: int,
         for yi in range(0, dim.y):
             for xi in range(0, dim.x):
                 for c in range(0, num_card):
-                    idx = Index_3d(xi, yi, zi)
+                    idx = neon.Index_3d(xi, yi, zi)
                     # print(f"idx {idx}")
                     x, y, result = golden_axpy(idx, c)
                     field_X.write(idx=idx,
@@ -144,7 +140,7 @@ def execution(nun_devs: int,
 
     axpy.run(
         stream_idx=0,
-        data_view=ne.DataView.standard(),
+        data_view=neon.DataView.standard(),
         container_runtime=container_runtime)
 
     wp.synchronize()
@@ -170,7 +166,7 @@ def execution(nun_devs: int,
         for yi in range(0, dim.y):
             for xi in range(0, dim.x):
                 for c in range(0, num_card):
-                    idx = Index_3d(xi, yi, zi)
+                    idx = neon.Index_3d(xi, yi, zi)
                     _, _, expected = golden_axpy(idx, c)
                     neon_res = field_Y.read(idx=idx,
                                             cardinality=c)
@@ -189,18 +185,18 @@ def execution(nun_devs: int,
 
 
 def gpu1_int(dimx, neon_ngpus: int = 1):
-    execution(nun_devs=neon_ngpus, num_card=1, dim=ne.Index_3d(1, 1, dimx), dtype=wp.int32,
-              container_runtime=wpne.Container.ContainerRuntime.neon)
+    execution(nun_devs=neon_ngpus, num_card=1, dim=neon.Index_3d(1, 1, dimx), dtype=wp.int32,
+              container_runtime=neon.Container.ContainerRuntime.neon)
 
 
 def gpu1_float(dimx, neon_ngpus: int = 1):
-    execution(nun_devs=neon_ngpus, num_card=1, dim=ne.Index_3d(dimx, dimx, dimx), dtype=wp.float32,
-              container_runtime=wpne.Container.ContainerRuntime.neon)
+    execution(nun_devs=neon_ngpus, num_card=1, dim=neon.Index_3d(dimx, dimx, dimx), dtype=wp.float32,
+              container_runtime=neon.Container.ContainerRuntime.neon)
 
 
 # def gpu1_float():
-#     execution(nun_devs=1, num_card=1, dim=ne.Index_3d(10, 10, 10), dtype=ctypes.c_float,
-#               container_runtime=wpne.Container.ContainerRuntime.neon)
+#     execution(nun_devs=1, num_card=1, dim=neon.Index_3d(10, 10, 10), dtype=ctypes.c_float,
+#               container_runtime=neon.Container.ContainerRuntime.neon)
 
 if __name__ == "__main__":
     # gpu1_int()
