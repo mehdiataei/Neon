@@ -54,7 +54,7 @@ def warp_AXPY(
         y[c, k, j, i] = x[c, k, j, i] + alpha * y[c, k, j, i]
 
 
-@neon.Container.factory
+@neon.Container.factory(name = "AXPY")
 def get_AXPY(f_X, f_Y, alpha_: Any):
     def axpy(loader: neon.Loader):
         loader.declare_execution_scope(f_Y.get_grid())
@@ -78,7 +78,7 @@ def get_AXPY(f_X, f_Y, alpha_: Any):
 
     return axpy
 
-@neon.Container.factory
+@neon.Container.factory()
 def set_to_random(f_X, f_Y):
     def axpy(loader: neon.Loader):
         loader.declare_execution_scope(f_Y.get_grid())
@@ -135,13 +135,17 @@ def execution_axpy(repetitions_id ,
     #field_Y.update_device(0)
     #field_result.update_device(0)
 
+    nvtx.push_range("Init data", color="red")
 
     init_data = set_to_random(f_X=field_X, f_Y=field_Y)
+
     init_data.run(stream_idx=0,
                   data_view=neon.DataView.standard(),
                   container_runtime=container_runtime)
 
     wp.synchronize()
+    nvtx.pop_range()
+
     aalpha = dtype(1.0)
     axpy_even = get_AXPY(f_X=field_X, f_Y=field_Y, alpha_=1)
     axpy_odd = get_AXPY( f_X=field_Y,f_Y=field_X, alpha_=aalpha)
@@ -164,12 +168,13 @@ def execution_axpy(repetitions_id ,
 
 
     #start nvtx section
-    nvtx.push_range("AXPY - benchmark")
 
     # sync up start timer
     bk.sync()
     timer = neon.Timer()
     timer.start()
+    nvtx.push_range("AXPY - benchmark")
+
     # loop for iterations times
     for i in range(0, iterations):
         axpy_odd.run(

@@ -1,3 +1,4 @@
+import copy
 import ctypes
 from enum import Enum
 
@@ -20,9 +21,11 @@ class Container:
 
     def __init__(self,
                  loading_lambda=None,
-                 execution: neon.Execution = neon.Execution.device()):
+                 execution: neon.Execution = neon.Execution.device(),
+                 name = "neon_container"):
 
         # creating a dummy loader to retrieve the grid for the thread scope
+        self.name  = name
         self.execution = execution
         dummy_loader: neon.Loader = neon.Loader(execution=execution,
                                       gpu_id=0,
@@ -171,35 +174,40 @@ class Container:
         :param data_view:
         :return:
         """
-        with nvtx.annotate("wpne-container", color="green"):
-            bk = self.data_set.get_backend()
-            n_devices = bk.get_num_devices()
-            wp_device_name: str = bk.get_warp_device_name()
+        nvtx.push_range(f"{self.name}_warp", color="red")
 
-            for dev_idx in range(n_devices):
-                wp_device = f"{wp_device_name}:{dev_idx}"
-                span = self.data_set.get_span(execution=self.execution,
-                                              dev_idx=dev_idx,
-                                              data_view=data_view)
-                thread_space = span.get_thread_space()
-                kernel = self._get_kernel(
-                    container_runtime=Container.ContainerRuntime.warp,
-                    execution=self.execution,
-                    gpu_id=dev_idx,
-                    data_view=data_view)
+        bk = self.data_set.get_backend()
+        n_devices = bk.get_num_devices()
+        wp_device_name: str = bk.get_warp_device_name()
 
-                wp_kernel_dim = thread_space.to_wp_kernel_dim()
-                wp.launch(kernel, dim=wp_kernel_dim, device=wp_device)
-                # TODO@Max - WARNING - the following synchronization is temporary
-                wp.synchronize_device(wp_device)
+        for dev_idx in range(n_devices):
+            wp_device = f"{wp_device_name}:{dev_idx}"
+            span = self.data_set.get_span(execution=self.execution,
+                                          dev_idx=dev_idx,
+                                          data_view=data_view)
+            thread_space = span.get_thread_space()
+            kernel = self._get_kernel(
+                container_runtime=Container.ContainerRuntime.warp,
+                execution=self.execution,
+                gpu_id=dev_idx,
+                data_view=data_view)
+
+            wp_kernel_dim = thread_space.to_wp_kernel_dim()
+            wp.launch(kernel, dim=wp_kernel_dim, device=wp_device)
+            # TODO@Max - WARNING - the following synchronization is temporary
+            wp.synchronize_device(wp_device)
+
+        nvtx.pop_range()
 
     def _run_neon(
             self,
             stream_idx: int,
             data_view: neon.DataView):
+        nvtx.push_range(f"{self.name}_neon", color="green")
         self.neon_gate.lib.warp_container_run(self.container_handle,
                                             stream_idx,
                                             data_view)
+        nvtx.pop_range()
 
     def run(self,
             stream_idx: int,
@@ -213,13 +221,18 @@ class Container:
                            data_view=data_view)
 
     @staticmethod
-    def factory(loading_lambda_generator):
-        def container_generator(*args, **kwargs):
-            loading_lambda = loading_lambda_generator(*args, **kwargs)
-            container = Container(loading_lambda=loading_lambda)
-            return container
+    def factory(name=None):
+        def factory_decorator(loading_lambda_generator):
+            def container_generator(*args, **kwargs):
+                loading_lambda = loading_lambda_generator(*args, **kwargs)
+                local_name = copy.deepcopy(name)
+                if local_name is None:
+                    local_name = f"{loading_lambda.__name__}_neon_container"
+                container = Container(loading_lambda=loading_lambda, name = local_name)
+                return container
 
-        return container_generator
+            return container_generator
+        return factory_decorator
 
     @staticmethod
     def fill(field: typing.Any,

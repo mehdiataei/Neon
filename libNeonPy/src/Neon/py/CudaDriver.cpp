@@ -135,7 +135,7 @@ auto CudaDriver::run_kernel(
             0);
 
         check_cuda_res(res, "cuLaunchKernel");
-        cuCtxSynchronize();
+        //cuCtxSynchronize();
 
     }
 }
