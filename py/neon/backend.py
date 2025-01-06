@@ -59,9 +59,9 @@ class Backend(object):
         self.api_delete.restype = ctypes.c_int
         # ------------------------------------------------------------------
         # backend_get_string
-        self.api_get_string = lib_obj.backend_get_string
-        self.api_get_string.argtypes = [self.neon_gate.handle_type]
-        self.api_get_string.restype = ctypes.c_char_p
+        # self.api_get_string = lib_obj.backend_get_string
+        # self.api_get_string.argtypes = [self.neon_gate.handle_type]
+        # self.api_get_string.restype = ctypes.c_char_p
         # ------------------------------------------------------------------
         # cuda_driver_new
         self.api_cuda_driver_new = lib_obj.cuda_driver_new
@@ -78,7 +78,7 @@ class Backend(object):
         # ------------------------------------------------------------------
         # cuda_driver_delete
         self.api_sync = lib_obj.backend_sync
-        self.api_sync.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
+        self.api_sync.argtypes = [self.neon_gate.handle_type]
         self.api_sync.restype = ctypes.c_int
         # ------------------------------------------------------------------
 
