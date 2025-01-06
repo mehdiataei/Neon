@@ -85,6 +85,10 @@ class Backend(object):
         # TODOMATT get num devices
         # TODOMATT get device type
 
+    # def info(self):
+    #     return  print(f"INFO Backend handle {hex(self.backend_handle.value)}")
+
+
     def help_backend_new(self):
         if self.backend_handle.value != ctypes.c_void_p(0).value:
             raise Exception(f'DBackend: Invalid handle {self.backend_handle}')
@@ -134,8 +138,8 @@ class Backend(object):
             return 'cpu'
 
 
-    def __str__(self):
-        return ctypes.cast(self.neon_gate.lib.get_string(self.backend_handle), ctypes.c_char_p).value.decode('utf-8')
+    # def __str__(self):
+    #     return ctypes.cast(self.api_get_string(self.backend_handle), ctypes.c_char_p).value.decode('utf-8')
 
 
     def sync(self):

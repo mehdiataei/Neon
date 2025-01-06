@@ -50,7 +50,8 @@ class Report(object):
         # ------------------------------------------------------------------
         types = {
             'int64': ctypes.c_int64,
-            'double': ctypes.c_double
+            'double': ctypes.c_double,
+            'string': ctypes.c_char_p
         }
         for type_key in types.keys():
             register_foo( f'report_add_member_{type_key}',
@@ -59,7 +60,8 @@ class Report(object):
                              ctypes.c_char_p,
                              types[type_key]],
                          ctypes.c_int)
-
+            if  type_key == 'string':
+                continue
             register_foo(f'report_add_member_vector_{type_key}',
                          [
                              self.neon_gate.handle_type,
@@ -94,10 +96,14 @@ class Report(object):
             type_key = 'int64'
         elif isinstance(value, float):
             type_key = 'double'
+        elif isinstance(value, str):
+            type_key = 'string'
         else:
             raise Exception('Invalid type')
-        name = f'report_add_member_{type_key}'
-        ret = self.api[name](self.handle, name.encode('utf-8'), value)
+        foo_name = f'report_add_member_{type_key}'
+        if type_key == 'string':
+            value = value.encode('utf-8')
+        ret = self.api[foo_name](self.handle, name.encode('utf-8'), value)
         if ret != 0:
             raise Exception("Error adding member")
             pass
@@ -160,8 +166,8 @@ class Report(object):
             raise Exception('Invalid type')
 
         c_array = c_array_type(*array_view)
-        name = f'report_add_member_vector_{type_key}'
-        ret = self.api[name](self.handle,
+        foo_name = f'report_add_member_vector_{type_key}'
+        ret = self.api[foo_name](self.handle,
                              name.encode('utf-8'),
                              array_size,
                              c_array)

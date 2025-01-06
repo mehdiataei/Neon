@@ -19,7 +19,7 @@ auto backend_new(
     std::vector<int> vec(devIds, devIds + numDevices);
 
     auto backendPtr = new (std::nothrow) Neon::Backend(vec, Neon::Runtime(runtime));
-    std::cout << "NeonPy: Backend created" << backendPtr->toString() << std::endl;
+    //std::cout << "NeonPy: Backend created" << backendPtr->toString() << std::endl;
 
     if (backendPtr == nullptr) {
         std::cout << "NeonPy: Initialization error. Unable to allocage backend " << std::endl;
@@ -73,6 +73,8 @@ auto backend_sync(void* handle) -> int
 {
     using Backend = Neon::Backend;
     Backend* backendPtr = (Backend*)handle;
+    // std::cout << "NeonPy: Backend sync"<< backendPtr<< std::endl;
+
     if (backendPtr == nullptr) {
         return -1;
     }
