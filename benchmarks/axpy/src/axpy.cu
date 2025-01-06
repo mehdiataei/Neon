@@ -1,18 +1,17 @@
 #include "Neon/domain/Grids.h"
 #include "Neon/domain/details/dGridDisg/dGrid.h"
 #include "Neon/domain/details/dGridSoA/dGridSoA.h"
-
+#include <nvtx3/nvToolsExt.h>
 
 template<typename Field>
 auto init_data(Field &x, Field &y)
     -> Neon::set::Container {
-
-    const auto& grid = x.getGrid();
-        return grid.newContainer(
+    const auto &grid = x.getGrid();
+    return grid.newContainer(
         "init_data",
         [&](Neon::set::Loader &loader) {
-            auto& xd = loader.load(x);
-            auto& yd = loader.load(y);
+            auto &xd = loader.load(x);
+            auto &yd = loader.load(y);
             return [=] NEON_CUDA_HOST_DEVICE(const typename Field::Idx &idx) mutable {
                 for (int c = 0; c < Field::Cardinality; ++c) {
                     xd(idx, c) = 2.2;
@@ -24,7 +23,7 @@ auto init_data(Field &x, Field &y)
 }
 
 template<typename Field>
-auto axpy(Field x,Field y)
+auto axpy(Field& x, Field& y)
     -> Neon::set::Container {
     return x.getGrid().newContainer(
         "init_data",
@@ -46,7 +45,7 @@ template<typename dType, int cardinality>
 auto axpy_repetition(Neon::index_3d dim,
                      int ngpus,
                      int iterations,
-                     int repetitions, int argc, char **argv) {
+                     int repetitions, int argc, char **argv) -> void {
     std::string dtype_name;
     if (std::is_same_v<dType, float>) {
         dtype_name = "float";
@@ -60,15 +59,15 @@ auto axpy_repetition(Neon::index_3d dim,
 
     // Construct the report name
     std::ostringstream report_name_stream;
-    report_name_stream << "axpy_cpp_neon" << dim << "_" << ngpus << "_"
+    report_name_stream << "axpy_cpp_neon_" << dim.x << "_" << ngpus << "_"
             << dtype_name << "_" << iterations << "_"
             << repetitions;
 
     std::string report_name = report_name_stream.str();
 
 
-    std::vector<double> mlups_vec(repetitions);
-    std::vector<double> t_vec(repetitions);
+    std::vector<double> mlups_vec;
+    std::vector<double> t_vec;
 
     for (int rep = 0; rep < repetitions; ++rep) {
         // allocate grid and 2 fields
@@ -98,6 +97,7 @@ auto axpy_repetition(Neon::index_3d dim,
         }
 
         backend.syncAll();
+        nvtxRangePush("iterations");
 
         Neon::Timer_ms timer;
         timer.start();
@@ -106,12 +106,14 @@ auto axpy_repetition(Neon::index_3d dim,
             even.run(0);
         }
         backend.syncAll();
+        nvtxRangePop();
 
         timer.stop();
         double t = timer.time();
         t_vec.push_back(t);
         double mlups = (dim.x * dim.y * dim.z * iterations * 1.0) / t / 1000.0;
         mlups_vec.push_back(mlups);
+        std::cout << "MLUPS: " << mlups << std::endl;
     }
     Neon::Report report(report_name);
 
@@ -131,32 +133,20 @@ auto axpy_repetition(Neon::index_3d dim,
 
 // Explicit instantiation of axpy_repetition
 
-template auto axpy_repetition<int, 1>(Neon::index_3d, int, int, int, int, char **);
+template auto axpy_repetition<int, 1>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<int, 3>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<int, 5>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<int, 19>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<int, 27>(Neon::index_3d, int, int, int, int, char **) -> void;
 
-template auto axpy_repetition<int, 3>(Neon::index_3d, int, int, int, int, char **);
+template auto axpy_repetition<float, 1>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<float, 3>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<float, 5>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<float, 19>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<float, 27>(Neon::index_3d, int, int, int, int, char **) -> void;
 
-template auto axpy_repetition<int, 5>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<int, 19>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<int, 27>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<float, 1>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<float, 3>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<float, 5>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<float, 19>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<float, 27>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<double, 1>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<double, 3>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<double, 5>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<double, 19>(Neon::index_3d, int, int, int, int, char **);
-
-template auto axpy_repetition<double, 27>(Neon::index_3d, int, int, int, int, char **);
+template auto axpy_repetition<double, 1>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<double, 3>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<double, 5>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<double, 19>(Neon::index_3d, int, int, int, int, char **) -> void;
+template auto axpy_repetition<double, 27>(Neon::index_3d, int, int, int, int, char **) -> void;

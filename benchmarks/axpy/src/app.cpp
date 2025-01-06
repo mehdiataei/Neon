@@ -1,4 +1,3 @@
-
 #include "axpy.h"
 
 #include "Neon/Neon.h"
@@ -8,6 +7,7 @@
 #include <string>
 
 int main(int argc, char **argv) {
+    Neon::init();
     // Default values
     int dim = 10;
     int ngpus = 1;
@@ -42,6 +42,60 @@ int main(int argc, char **argv) {
     std::cout << "  cardinality: " << cardinality << "\n";
     std::cout << "  iterations: " << iterations << "\n";
     std::cout << "  repetitions: " << repetitions << "\n";
+
+    if (dtype == "int") {
+        if (cardinality == 1) {
+            axpy_repetition<int, 1>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 3) {
+            axpy_repetition<int, 3>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 5) {
+            axpy_repetition<int, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 19) {
+            axpy_repetition<int, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 27) {
+            axpy_repetition<int, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+    }
+
+    if (dtype == "float") {
+        if (cardinality == 1) {
+            axpy_repetition<float, 1>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 3) {
+            axpy_repetition<float, 3>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 5) {
+            axpy_repetition<float, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 19) {
+            axpy_repetition<float, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 27) {
+            axpy_repetition<float, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+    }
+
+    if (dtype == "double") {
+        if (cardinality == 1) {
+            axpy_repetition<double, 1>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 3) {
+            axpy_repetition<double, 3>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 5) {
+            axpy_repetition<double, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 19) {
+            axpy_repetition<double, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+        if (cardinality == 27) {
+            axpy_repetition<double, 5>(Neon::index_3d(dim), ngpus, iterations, repetitions, argc, argv);
+        }
+    }
 
     return 0;
 }
