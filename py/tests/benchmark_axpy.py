@@ -218,6 +218,7 @@ def benchmark(dim, ngpus: int = 1. ,dtype=wp.float32, iterations=100, repetition
     report.add_member('dtype', type_name(dtype))
     report.add_member('iterations', iterations)
     report.add_member('repetitions', repetitions)
+    report.add_member('runtime', 'py_neon')
 
 
     # loop over repetitions
@@ -238,7 +239,7 @@ def benchmark(dim, ngpus: int = 1. ,dtype=wp.float32, iterations=100, repetition
     report.add_member_vector('mlups', mlups)
     report.add_member_vector('time (ms)', enlapsed_time_ms)
 
-    report_name = f"axpy_{dim}_{ngpus}_{type_name(dtype)}_{iterations}_{repetitions}.json"
+    report_name = f"axpy_py_neon_{dim}_{ngpus}_{type_name(dtype)}_{iterations}_{repetitions}.json"
     report.write(report_name)
 
 
