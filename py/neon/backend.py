@@ -3,7 +3,6 @@ from enum import Enum
 from typing import List
 import warp as wp
 
-import numpy as np
 
 import neon
 
@@ -47,7 +46,7 @@ class Backend(object):
         # ------------------------------------------------------------------
         # backend_new
         lib_obj = self.neon_gate.lib
-        self.api_new = lib_obj.dBackend_new
+        self.api_new = lib_obj.backend_new
         self.api_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
                                  ctypes.c_int,
                                  ctypes.c_int,
@@ -55,29 +54,40 @@ class Backend(object):
         self.api_new.restype = ctypes.c_int
         # ------------------------------------------------------------------
         # backend_delete
-        self.neon_gate.lib.dBackend_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
-        self.neon_gate.lib.dBackend_delete.restype = ctypes.c_int
+        self.api_delete = lib_obj.backend_delete
+        self.api_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
+        self.api_delete.restype = ctypes.c_int
         # ------------------------------------------------------------------
-        # backend_get_string
-        self.neon_gate.lib.dBackend_get_string.argtypes = [self.neon_gate.handle_type]
-        self.neon_gate.lib.dBackend_get_string.restype = ctypes.c_char_p
+        # # backend_get_string
+        # self.api_get_string = lib_obj.backend_get_string
+        # self.api_get_string.argtypes = [self.neon_gate.handle_type]
+        # self.api_get_string.restype = ctypes.c_char_p
         # ------------------------------------------------------------------
         # cuda_driver_new
-        self.neon_gate.lib.cuda_driver_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
+        self.api_cuda_driver_new = lib_obj.cuda_driver_new
+        self.api_cuda_driver_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
                                                      self.neon_gate.handle_type]
-        self.neon_gate.lib.cuda_driver_new.restype = ctypes.c_int
-
-        # self.neon_gate.lib.cuda_driver_new.argtypes = [self.neon_gate.handle_type,
-        #                                              self.neon_gate.handle_type]
-        # self.neon_gate.lib.cuda_driver_new.restype = None
+        self.api_cuda_driver_new.restype = ctypes.c_int
         # ------------------------------------------------------------------
         # cuda_driver_delete
-        self.neon_gate.lib.cuda_driver_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
-        self.neon_gate.lib.cuda_driver_delete.restype = ctypes.c_int
+        self.api_cuda_driver_delete = lib_obj.cuda_driver_delete
+        self.api_cuda_driver_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
+        self.api_cuda_driver_delete.restype = ctypes.c_int
+        # ------------------------------------------------------------------
+
+        # ------------------------------------------------------------------
+        # cuda_driver_delete
+        self.api_sync = lib_obj.backend_sync
+        self.api_sync.argtypes = [self.neon_gate.handle_type]
+        self.api_sync.restype = ctypes.c_int
         # ------------------------------------------------------------------
 
         # TODOMATT get num devices
         # TODOMATT get device type
+
+    # def info(self):
+    #     return  print(f"INFO Backend handle {hex(self.backend_handle.value)}")
+
 
     def help_backend_new(self):
         if self.backend_handle.value != ctypes.c_void_p(0).value:
@@ -91,7 +101,7 @@ class Backend(object):
         # Loading the device list into a contiguous array
         dev_array = (ctypes.c_int * self.n_dev)(*self.dev_idx_list)
 
-        res = self.neon_gate.lib.dBackend_new(ctypes.pointer(self.backend_handle),
+        res = self.api_new(ctypes.pointer(self.backend_handle),
                                             self.runtime.value,
                                             self.n_dev,
                                             dev_array)
@@ -99,18 +109,22 @@ class Backend(object):
         if res != 0:
             raise Exception('DBackend: Failed to initialize backend')
 
-        self.neon_gate.lib.cuda_driver_new(ctypes.pointer(self.cuda_driver_handle),
+        res = self.api_cuda_driver_new(ctypes.pointer(self.cuda_driver_handle),
                                          self.backend_handle)
+
+        if res != 0:
+            raise Exception('DBackend: Failed to initialize backend')
+
+        # print(f"Backend initialized with handle {hex(self.backend_handle.value)}")
+        # print(f"{self.__str__()}")
         pass
 
 
     def help_backend_delete(self):
         if self.backend_handle == 0:
             return
-        # print(f'PYTHON cuda_driver_handle {hex(self.cuda_driver_handle.value)}')
-        self.neon_gate.lib.cuda_driver_delete(ctypes.pointer(self.cuda_driver_handle))
-        # print(f'PYTHON backend_handle {hex(self.backend_handle.value)}')
-        res = self.neon_gate.lib.dBackend_delete(ctypes.pointer(self.backend_handle))
+        self.api_cuda_driver_delete(ctypes.pointer(self.cuda_driver_handle))
+        res = self.api_delete(ctypes.pointer(self.backend_handle))
         if res != 0:
             raise Exception('Failed to delete backend')
 
@@ -126,12 +140,12 @@ class Backend(object):
             return 'cpu'
 
 
-    def __str__(self):
-        return ctypes.cast(self.neon_gate.lib.get_string(self.backend_handle), ctypes.c_char_p).value.decode('utf-8')
+    # def __str__(self):
+    #     return ctypes.cast(self.api_get_string(self.backend_handle), ctypes.c_char_p).value.decode('utf-8')
 
 
     def sync(self):
-        return self.neon_gate.lib.dBackend_sync(self.backend_handle)
+        return self.api_sync(self.backend_handle)
 
 
     def get_device_name(self, dev_idx: int):

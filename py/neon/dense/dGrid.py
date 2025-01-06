@@ -123,7 +123,7 @@ class dGrid(object):
                                          stencil_array)
         if res != 0:
             raise Exception('dGrid: Failed to initialize grid')
-        print(f"dGrid initialized with handle {self.grid_handle.value}")
+        #print(f"dGrid initialized with handle {self.grid_handle.value}")
 
     def _help_grid_delete(self):
         if self.neon_gate.lib.dGrid_delete(ctypes.pointer(self.grid_handle)) != 0:

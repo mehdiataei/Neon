@@ -39,6 +39,14 @@ extern "C" auto report_delete(
     return 0;
 }
 
+extern "C" auto report_add_member_string(void*       handle,
+                       const char* memberKey,
+                       const char*     memberVal) -> void
+{
+    auto report = reinterpret_cast<Neon::core::Report*>(handle);
+    report->addMember(memberKey, memberVal);
+}
+
 extern "C" auto report_add_member_int64(void*       handle,
                        const char* memberKey,
                        const int64_t     memberVal) -> void

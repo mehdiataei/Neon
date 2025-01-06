@@ -239,7 +239,7 @@ auto dGrid_dField_new(
 
         using Field = Grid::Field<T, 0>;
         Field field = grid.newField<T, 0>("test", cardinality, 0, Neon::DataUse::HOST_DEVICE);
-        std::cout << field.toString() << std::endl;
+        //std::cout << field.toString() << std::endl;
 
         Field* fieldPtr = new (std::nothrow) Field(field);
         AllocationCounter::Allocation();

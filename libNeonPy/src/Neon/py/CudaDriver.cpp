@@ -64,7 +64,7 @@ auto CudaDriver::run_kernel(
 {
     [[maybe_unused]] auto& streamSet = backend.streamSet(streamIdx);
     int const              ndevs = backend.getDeviceCount();
-//#pragma omp parallel for num_threads(ndevs)
+    #pragma omp parallel for num_threads(ndevs)
     for (int setIdx = 0; setIdx < ndevs; setIdx++) {
         backend.devSet().setActiveDevContext(setIdx);
 
@@ -72,14 +72,14 @@ auto CudaDriver::run_kernel(
         CUstream            driverStream = (CUstream)cuda_stream;
         CUfunction          function = static_cast<CUfunction>(kernelSet[setIdx]);
         auto&               launch_info = launch_params[setIdx];
-        std::cout << "setIdx " << setIdx << " function " << function << std::endl;
+        //std::cout << "setIdx " << setIdx << " function " << function << std::endl;
         // auto const cudaGrid = launch_info.cudaGrid();
         // auto const cudaBlock = launch_info.cudaBlock();
 
         // Set the created context as the current context
         CUresult res = cuCtxSetCurrent(cu_contexts[setIdx]);
         check_cuda_res(res, "cuCtxSetCurrent");
-        std::cout << "Current CUDA context ID (handle): " << (cu_contexts[setIdx]) << std::endl;
+        //std::cout << "Current CUDA context ID (handle): " << (cu_contexts[setIdx]) << std::endl;
         // int64_t pywarp_size = 1;
         // std::cout << "pywarp_size" << pywarp_size << std::endl;
         const int LAUNCH_MAX_DIMS = 4;  // should match types.py

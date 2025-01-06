@@ -203,6 +203,9 @@ class dField(object):
                    field_name: str = "field"):
         self.api_export_vti(self.handle, filename.encode('utf-8'), field_name.encode('utf-8'))
 
+    def get_cardinality(self):
+        return self.cardinality.value
+
     @property
     def type(self):
         return self.dtype
