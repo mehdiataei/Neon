@@ -16,6 +16,7 @@ from .dense.__init__ import *
 from .loader import Loader
 from .container import Container
 from .timer import Timer
+from .skeleton import Skeleton
 
 #from .block.__init__ import *
 #from .multires.__init__ import *

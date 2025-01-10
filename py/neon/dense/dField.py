@@ -206,6 +206,12 @@ class dField(object):
     def get_cardinality(self):
         return self.cardinality.value
 
+    def get_type(self):
+        return self.dtype
+
+    def get_handle(self):
+        return self.handle
+
     @property
     def type(self):
         return self.dtype

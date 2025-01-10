@@ -73,8 +73,8 @@ auto MultiXpuGraph::
     helpParseContainer(Neon::set::Container& container)
         -> std::vector<Neon::set::dataDependency::Token>
 {
-    auto& kcInterface = container.getContainerInterface();
-    auto& tokens = kcInterface.parse();
+    auto& containerAPI = container.getContainerInterface();
+    auto& tokens = containerAPI.parse();
     return tokens;
 }
 

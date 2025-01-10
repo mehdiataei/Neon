@@ -24,66 +24,105 @@ class Container:
                  execution: neon.Execution = neon.Execution.device(),
                  name = "neon_container"):
 
-        # creating a dummy loader to retrieve the grid for the thread scope
-        self.name  = name
-        self.execution = execution
-        dummy_loader: neon.Loader = neon.Loader(execution=execution,
-                                      gpu_id=0,
-                                      data_view=neon.DataView.standard())
+        if loading_lambda is None:
+            raise Exception('Container: Invalid loading lambda')
 
-        try:
-            self.neon_gate: neon.Gate = neon.Gate()
-        except Exception as e:
-            self.handle: ctypes.c_uint64 = ctypes.c_void_p
-            raise Exception('Failed to initialize PyNeon: ' + str(e))
         self.help_load_api()
 
+        self.api_delete = None
         self.loading_lambda = None
-        self.data_set = None
+        self.grid = None
         self.backend = None
 
-        if loading_lambda is not None:
-            self.loading_lambda = loading_lambda
-            self.loading_lambda(dummy_loader)
-            self.data_set = dummy_loader._retrieve_grid()
-            self.backend = self.data_set.get_backend()
-            # Setting up the information of the Neon container for Neon runtime
-            n_devices = self.backend.get_num_devices()  # rows
-            self.retained_executable_modules = [set() for _ in range(n_devices)]
+        self.name  = name
+        self.execution = execution
 
-            n_data_views = 3  # columns
-            # Create a NumPy array of object dtype
-            self.k_2Darray = (ctypes.c_void_p * (n_data_views * n_devices))()
+        container_parser: neon.Loader = neon.Loader(execution=execution,
+                                                    gpu_id=0,
+                                                    data_view=neon.DataView.standard(),
+                                                    parsing=True
+                                                    )
 
-            for dev_idx in range(n_devices):
-                for dw_idx in range(n_data_views):
-                    k = self._get_kernel(execution=execution,
-                                         gpu_id=dev_idx,
-                                         data_view=neon.DataView.from_int(dw_idx),
-                                         container_runtime=Container.ContainerRuntime.neon)
-                    # using self.k for debugging
-                    offset = dev_idx * n_data_views + dw_idx
-                    dev_str = self.backend.get_device_name(dev_idx)
-                    k_hook = self._get_kernel_hook(k, dev_str, dev_idx)
-                    # print(f"hook {hex(k_hook)}, device {dev_idx}, data_view {dw_idx}")
 
-                    self.k_2Darray[offset] = k_hook
+        self.loading_lambda = loading_lambda
+        self.loading_lambda(container_parser)
+        self.grid = container_parser._retrieve_grid()
+        self.backend = self.grid.get_backend()
+        # Setting up the information of the Neon container for Neon runtime
+        n_devices = self.backend.get_num_devices()  # rows
+        self.retained_executable_modules = [set() for _ in range(n_devices)]
 
-            # debug = True
-            # if debug:
-            #     print("k_2Darray")
-            #     for i in range(n_devices):
-            #         for j in range(n_data_views):
-            #             print(f"Device {i}, DataView {j} hook {hex(k_2Darray[i * n_data_views + j])}")
+        n_data_views = 3  # columns
+        # Create a NumPy array of object dtype
+        self.k_2Darray = (ctypes.c_void_p * (n_data_views * n_devices))()
 
-            self.container_handle = self.neon_gate.handle_type(0)
-            block_size = neon.Index_3d(128, 0, 0)
-            self.neon_gate.lib.warp_dgrid_container_new(ctypes.pointer(self.container_handle),
-                                                      execution,
-                                                      self.backend.cuda_driver_handle,
-                                                      self.data_set.get_handle(),
-                                                      self.k_2Darray,
-                                                      block_size)
+        for dev_idx in range(n_devices):
+            for dw_idx in range(n_data_views):
+                dev_kernel = self._get_kernel(execution=execution,
+                                     gpu_id=dev_idx,
+                                     data_view=neon.DataView.from_int(dw_idx),
+                                     container_runtime=Container.ContainerRuntime.neon)
+                # using self.k for debugging
+                offset = dev_idx * n_data_views + dw_idx
+                dev_str = self.backend.get_device_name(dev_idx)
+                k_hook = self._get_kernel_hook(dev_kernel, dev_str, dev_idx)
+
+                self.k_2Darray[offset] = k_hook
+
+        # debug = True
+        # if debug:
+        #     print("k_2Darray")
+        #     for i in range(n_devices):
+        #         for j in range(n_data_views):
+        #             print(f"Device {i}, DataView {j} hook {hex(k_2Darray[i * n_data_views + j])}")
+
+        self.container_handle = self.neon_gate.handle_type(0)
+        block_size = neon.Index_3d(128, 0, 0)
+        self.neon_gate.lib.warp_dgrid_container_new(ctypes.pointer(self.container_handle),
+                                                    execution,
+                                                    self.backend.cuda_driver_handle,
+                                                    self.grid.get_handle(),
+                                                    self.k_2Darray,
+                                                    block_size)
+
+        self._parsing(container_parser)
+
+    def _parsing(self, parser):
+        lib_obj = self.neon_gate.lib
+        tokens = parser._get_tokens()
+        for token in tokens:
+            field = token.get_field()
+            access = token.get_access()
+            operation = token.get_operation()
+            discretization = token.get_discretization()
+
+            field_card = field.get_cardinality()
+            field_type = field.get_type()
+            field_type_name = ''
+            if field_type == ctypes.c_float or field_type == wp.float32:
+                field_type_name = 'float'
+            elif field_type == ctypes.c_double or field_type == wp.float64:
+                field_type_name = 'double'
+            elif field_type == ctypes.c_int  or field_type == wp.int32:
+                field_type_name = 'int'
+            register_token = getattr(lib_obj, f'warp_dgrid_container_add_parse_token_{field_type_name}_{field_card}')
+            register_token.argtypes = [self.neon_gate.handle_type,
+                                            self.neon_gate.handle_type,
+                                            ctypes.c_int,
+                                            ctypes.c_int,
+                                            ctypes.c_int]
+            register_token.restype = ctypes.c_int
+
+            register_token(self.container_handle,
+                        field.get_handle(),
+                        access.value,
+                        operation.value,
+                        discretization.value)
+        parse = lib_obj.warp_container_parse
+        parse.argtypes = [self.neon_gate.handle_type]
+        parse.restype = ctypes.c_int
+
+        parse(self.container_handle)
 
     def _get_kernel_hook(self, kernel, decvice_str, dev_idx):
         """
@@ -102,40 +141,53 @@ class Container:
         return module_exec.get_kernel_hooks(kernel).forward
 
     def help_load_api(self):
+        try:
+            self.neon_gate: neon.Gate = neon.Gate()
+        except Exception as e:
+            self.handle: ctypes.c_void_p = ctypes.c_void_p(0)
+            raise Exception('Failed to initialize PyNeon: ' + str(e))
+
         # ------------------------------------------------------------------
         # backend_new
-        self.neon_gate.lib.warp_dgrid_container_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
-                                                              neon.Execution,
-                                                              self.neon_gate.handle_type,
-                                                              self.neon_gate.handle_type,
-                                                              ctypes.POINTER(ctypes.c_void_p),
-                                                              ctypes.POINTER(neon.Index_3d)]
-        self.neon_gate.lib.warp_dgrid_container_new.restype = None
+        api_gate = self.neon_gate.lib
+        self.api_new = api_gate.warp_dgrid_container_new
+        self.api_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
+                                 neon.Execution,
+                                 self.neon_gate.handle_type,
+                                 self.neon_gate.handle_type,
+                                 ctypes.POINTER(ctypes.c_void_p),
+                                 ctypes.POINTER(neon.Index_3d)]
+        self.api_new.restype = ctypes.c_int
         # ------------------------------------------------------------------
         # warp_container_delete
-        self.neon_gate.lib.warp_container_delete.argtypes = [self.neon_gate.handle_type]
-        self.neon_gate.lib.warp_container_delete.restype = None
+        self.api_delete = api_gate.warp_container_delete
+        self.api_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
+        self.api_delete.restype = None
         # ------------------------------------------------------------------
-        # warp_dgrid_container_run
-        self.neon_gate.lib.warp_container_run.argtypes = [self.neon_gate.handle_type,
-                                                        ctypes.c_int,
-                                                        neon.DataView]
-        self.neon_gate.lib.warp_container_run.restype = None
+        # warp_container_run
+        self.api_run = api_gate.warp_container_run
+        self.api_run.argtypes = [self.neon_gate.handle_type,
+                                 ctypes.c_int,
+                                 neon.DataView]
+        self.api_run.restype = None
+        # ------------------------------------------------------------------
+        # parse_token
 
         # TODOMATT get num devices
         # TODOMATT get device type
+
 
     def _get_kernel(self,
                     container_runtime: ContainerRuntime,
                     execution: neon.Execution,
                     gpu_id: int,
                     data_view: neon.DataView):
-        span = self.data_set.get_span(execution=execution,
-                                      dev_idx=gpu_id,
-                                      data_view=data_view)
+        span = self.grid.get_span(execution=execution,
+                                  dev_idx=gpu_id,
+                                  data_view=data_view)
         loader: neon.Loader = neon.Loader(execution=execution,
-                                gpu_id=gpu_id,
-                                data_view=data_view)
+                                          gpu_id=gpu_id,
+                                          data_view=data_view)
 
         self.loading_lambda(loader)
         compute_lambda = loader._retrieve_compute_lambda()
@@ -176,15 +228,15 @@ class Container:
         """
         nvtx.push_range(f"{self.name}_warp", color="red")
 
-        bk = self.data_set.get_backend()
+        bk = self.grid.get_backend()
         n_devices = bk.get_num_devices()
         wp_device_name: str = bk.get_warp_device_name()
 
         for dev_idx in range(n_devices):
             wp_device = f"{wp_device_name}:{dev_idx}"
-            span = self.data_set.get_span(execution=self.execution,
-                                          dev_idx=dev_idx,
-                                          data_view=data_view)
+            span = self.grid.get_span(execution=self.execution,
+                                      dev_idx=dev_idx,
+                                      data_view=data_view)
             thread_space = span.get_thread_space()
             kernel = self._get_kernel(
                 container_runtime=Container.ContainerRuntime.warp,
@@ -205,8 +257,8 @@ class Container:
             data_view: neon.DataView):
         nvtx.push_range(f"{self.name}_neon", color="green")
         self.neon_gate.lib.warp_container_run(self.container_handle,
-                                            stream_idx,
-                                            data_view)
+                                              stream_idx,
+                                              data_view)
         nvtx.pop_range()
 
     def run(self,
@@ -241,8 +293,8 @@ class Container:
         @Container.factory
         def container_fill(field):
             def fill_container(loader: neon.Loader):
-                loader.declare_execution_scope(field.get_grid())
-                f = loader.get_read_handel(field)
+                loader.set_grid(field.get_grid())
+                f = loader.get_read_handle(field)
 
                 @wp.func
                 def foo(idx: typing.Any):

@@ -11,9 +11,9 @@ import typing
 @neon.Container.factory
 def get_solver_operator_container(field):
     def setup(loader: neon.Loader):
-        loader.declare_execution_scope(field.get_grid())
+        loader.set_grid(field.get_grid())
 
-        f_read = loader.get_read_handel(field)
+        f_read = loader.get_read_handle(field)
 
         @wp.func
         def foo(idx: typing.Any):

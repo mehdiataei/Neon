@@ -1,20 +1,20 @@
 import ctypes
 from typing import List
 
-from neon import Backend
-from neon import neon
-from wpne import Container
-
+# from neon import Backend
+# #from neon import neon
+# from neon import Container
+import neon
 
 class Skeleton(object):
     def __init__(self,
-                 backend: Backend):
+                 backend: neon.Backend):
 
         self.skeleton_handle: ctypes.c_void_p = ctypes.c_void_p(0)
         self.backend = backend
 
         try:
-            self.neon: neon = neon()
+            self.neon_gate: neon.Gate = neon.Gate()
         except Exception as e:
             self.skeleton_handle = ctypes.c_void_p(0)
             raise Exception('Failed to initialize PyNeon: ' + str(e))
@@ -25,49 +25,49 @@ class Skeleton(object):
     def __del__(self):
         if self.skeleton_handle == 0:
             return
-        self.help_skeleton_new()
+        self.help_skeleton_delete()
         pass
 
     def help_load_api(self):
-        lib_obj = self.neon.lib
+        lib_obj = self.neon_gate.lib
         # ------------------------------------------------------------------
-        # warp_skeleton_new
-        self.api_new = lib_obj.warp_skeleton_new
-        self.api_new.argtypes = [ctypes.POINTER(self.neon.handle_type),
-                                 self.neon.handle_type]
+        # neon_skeleton_new
+        self.api_new = lib_obj.neon_skeleton_new
+        self.api_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
+                                 self.neon_gate.handle_type]
         self.api_new.restype = ctypes.c_int
         # ------------------------------------------------------------------
-        # warp_skeleton_delete
-        self.api_delete = lib_obj.warp_skeleton_delete
-        self.api_delete.argtypes = [ctypes.POINTER(self.neon.handle_type)]
+        # neon_skeleton_delete
+        self.api_delete = lib_obj.neon_skeleton_delete
+        self.api_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
         self.api_delete.restype = ctypes.c_int
         # ------------------------------------------------------------------
-        # warp_skeleton_sequence
-        self.api_sequence = lib_obj.warp_skeleton_sequence
-        self.api_sequence.argtypes = [self.neon.handle_type,
+        # neon_skeleton_sequence
+        self.api_sequence = lib_obj.neon_skeleton_sequence
+        self.api_sequence.argtypes = [self.neon_gate.handle_type,
                                       ctypes.c_char_p,
                                       ctypes.c_int,
-                                      ctypes.POINTER(self.neon.handle_type)]
+                                      ctypes.POINTER(self.neon_gate.handle_type)]
         self.api_sequence.restype = ctypes.c_int
         # ------------------------------------------------------------------
-        # warp_skeleton_run
-        self.api_run = lib_obj.warp_skeleton_run
-        self.api_run.argtypes = [self.neon.handle_type]
+        # neon_skeleton_run
+        self.api_run = lib_obj.neon_skeleton_run
+        self.api_run.argtypes = [self.neon_gate.handle_type]
         self.api_run.restype = ctypes.c_int
         # ------------------------------------------------------------------
-        # warp_skeleton_ioToDot
-        self.api_run = lib_obj.warp_skeleton_ioToDot
-        self.api_run.argtypes = [self.neon.handle_type,
+        # neon_skeleton_ioToDot
+        self.api_ioToDot = lib_obj.neon_skeleton_ioToDot
+        self.api_ioToDot.argtypes = [self.neon_gate.handle_type,
                                  ctypes.c_char_p,
                                  ctypes.c_char_p,
                                  ctypes.c_int]
-        self.api_run.restype = ctypes.c_int
+        self.api_ioToDot.restype = ctypes.c_int
 
     def help_skeleton_new(self):
         if self.skeleton_handle.value != ctypes.c_void_p(0).value:
             raise Exception(f'Skeleton: Invalid handle {self.skeleton_handle}')
 
-        res = self.neon.lib.warp_skeleton_new(ctypes.pointer(self.skeleton_handle),
+        res = self.api_new(ctypes.pointer(self.skeleton_handle),
                                                  self.backend.backend_handle)
 
         if res != 0:
@@ -80,7 +80,8 @@ class Skeleton(object):
         if res != 0:
             raise Exception('Failed to delete backend')
 
-    def sequence(self, name: str, containers: List[Container]):
+    def sequence(self, name: str, containers: List[neon.Container]
+    ):
         self.containers = containers
         self.handle_list = (ctypes.c_void_p * len(containers))()
         for i in range(len(self.handle_list)):
@@ -94,3 +95,14 @@ class Skeleton(object):
 
     def run(self):
         self.api_run(self.skeleton_handle)
+
+    def ioToDot(
+            self,
+            filename: str,
+            graph_name: str
+    ):
+        self.api_ioToDot(self.skeleton_handle,
+                         filename.encode('utf-8'),
+                         graph_name.encode('utf-8'),
+                         0
+                         )

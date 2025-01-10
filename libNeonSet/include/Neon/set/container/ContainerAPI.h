@@ -75,6 +75,12 @@ struct ContainerAPI
         -> std::shared_ptr<ContainerAPI>;
 
     /**
+    * Returns a pointer to the internal device container.
+    */
+    virtual auto getWarpContainer()
+        -> std::shared_ptr<ContainerAPI>;
+
+    /**
      * Returns a handle to the internal graph of Containers.
      */
     virtual auto getGraph() const

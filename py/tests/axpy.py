@@ -20,13 +20,13 @@ def warp_AXPY(
         y[c, k, j, i] = x[c, k, j, i] + alpha * y[c, k, j, i]
 
 
-@neon.Container.factory
+@neon.Container.factory(name = 'AXPY')
 def get_AXPY(f_X, f_Y, alpha: Any):
     def axpy(loader: neon.Loader):
-        loader.declare_execution_scope(f_Y.get_grid())
+        loader.set_grid(f_Y.get_grid())
 
-        f_x = loader.get_read_handel(f_X)
-        f_y = loader.get_read_handel(f_Y)
+        f_x = loader.get_read_handle(f_X)
+        f_y = loader.get_read_handle(f_Y)
         print(f_x.__str__())
 
         @wp.func
@@ -142,6 +142,10 @@ def execution(nun_devs: int,
         stream_idx=0,
         data_view=neon.DataView.standard(),
         container_runtime=container_runtime)
+
+    sk =neon.Skeleton(bk)
+    sk.sequence('AXPY', [axpy])
+    sk.ioToDot('axpy.dot', 'axpy')
 
     wp.synchronize()
     wp.launch(

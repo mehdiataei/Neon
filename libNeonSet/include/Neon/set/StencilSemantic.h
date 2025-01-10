@@ -22,6 +22,7 @@ struct StencilSemanticUtils
 
     static auto toString(StencilSemantic opt) -> std::string;
     static auto fromString(const std::string& opt) -> StencilSemantic;
+    static auto fromInt(int opt) -> StencilSemantic;
     static auto getOptions() -> std::array<StencilSemantic, nOptions>;
 
     struct Cli

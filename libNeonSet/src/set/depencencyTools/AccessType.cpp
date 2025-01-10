@@ -1,7 +1,6 @@
 #include "Neon/set/dependency/AccessType.h"
 
 namespace Neon::set::dataDependency {
-
 auto AccessTypeUtils::toString(AccessType val) -> std::string
 {
     switch (val) {
@@ -31,4 +30,14 @@ auto AccessTypeUtils::merge(AccessType valA, AccessType valB) -> AccessType
     return AccessType::NONE;
 }
 
-}  // namespace Neon::set::internal
+auto AccessTypeUtils::fromInt(int val) -> AccessType
+{
+    if (val == 0)
+        return AccessType::NONE;
+    if (val == 1)
+        return AccessType::READ;
+    if (val == 2)
+        return AccessType::WRITE;
+    return AccessType::NONE;
+}
+}  // namespace Neon::set::dataDependency

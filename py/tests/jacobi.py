@@ -41,10 +41,10 @@ def warp_jacobi(
 @wpne.Container.factory
 def get_jacobi(f_X, f_Y):
     def axpy(loader: wpne.Loader):
-        loader.declare_execution_scope(f_Y.get_grid())
+        loader.set_grid(f_Y.get_grid())
 
-        f_x = loader.get_read_handel(f_X)
-        f_y = loader.get_read_handel(f_Y)
+        f_x = loader.get_read_handle(f_X)
+        f_y = loader.get_read_handle(f_Y)
 
         @wp.func
         def foo(idx: typing.Any):

@@ -197,6 +197,18 @@ auto ContainerAPI::
     NEON_THROW(exp);
 }
 
+    auto ContainerAPI::
+    getWarpContainer()
+        -> std::shared_ptr<ContainerAPI>
+{
+    std::string         description = helpGetNameForError();
+    Neon::NeonException exp("ContainerAPI");
+    exp << description << " "
+        << "getDeviceContainer"
+        << " is not supported.";
+    NEON_THROW(exp);
+}
+
 auto ContainerAPI::
     isParsingDataUpdated() -> bool
 {

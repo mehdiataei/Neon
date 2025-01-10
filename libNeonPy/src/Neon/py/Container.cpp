@@ -15,7 +15,6 @@
 #include "Neon/set/container/Loader.h"
 
 namespace Neon::py {
-
 template <typename Grid>
 struct WarpContainer : Neon::set::internal::ContainerAPI
 {
@@ -63,9 +62,10 @@ struct WarpContainer : Neon::set::internal::ContainerAPI
     {
         size_t sharedMem = shMemSizeFun(blockSize);
         for (auto dw :
-             {DataView::STANDARD,
-              DataView::BOUNDARY,
-              DataView::INTERNAL}) {
+             {
+                 DataView::STANDARD,
+                 DataView::BOUNDARY,
+                 DataView::INTERNAL}) {
             this->setLaunchParameters(dw) = grid.getLaunchParameters(dw, blockSize, sharedMem);
         }
     }
@@ -76,9 +76,10 @@ struct WarpContainer : Neon::set::internal::ContainerAPI
         // std::cout << "Grid " << grid.toString() << std::endl;
 
         size_t sharedMem = 0;
-        for (auto dw : {DataView::STANDARD,
-                        DataView::BOUNDARY,
-                        DataView::INTERNAL}) {
+        for (auto dw : {
+                 DataView::STANDARD,
+                 DataView::BOUNDARY,
+                 DataView::INTERNAL}) {
             this->setLaunchParameters(dw) = grid.getLaunchParameters(dw, grid.getDefaultBlock(), sharedMem);
         }
     }
@@ -96,27 +97,44 @@ struct WarpContainer : Neon::set::internal::ContainerAPI
     //     return loader;
     // }
     //
-    // auto newParser() -> Loader
-    // {
-    //     auto parser = Loader(*this,
-    //                          Neon::Execution::host,
-    //                          Neon::SetIdx(0),
-    //                          Neon::DataView::STANDARD,
-    //                          Neon::set::internal::LoadingMode_e::PARSE_AND_EXTRACT_LAMBDA);
-    //     return parser;
-    // }
-    //
+
+
     auto parse() -> const std::vector<Neon::set::dataDependency::Token>& override
     {
-        // if (!this->isParsingDataUpdated()) {
-        //     auto parser = newParser();
-        //     this->m_loadingLambda(parser);
-        //     this->setParsingDataUpdated(true);
-        //
-        //     this->setContainerPattern(this->getTokens());
-        // }
-        // return getTokens();
-        NEON_THROW_UNSUPPORTED_OPTION("");
+        if (!this->isParsingDataUpdated()) {
+            auto parser = Neon::set::Loader(*this,
+                                            Neon::Execution::host,
+                                            Neon::SetIdx(0),
+                                            Neon::DataView::STANDARD,
+                                            Neon::set::internal::LoadingMode_e::PARSE_AND_EXTRACT_LAMBDA);
+            this->loadingLambda(parser);
+            this->setParsingDataUpdated(true);
+
+            this->setContainerPattern(this->getTokens());
+        }
+        return getTokens();
+        // NEON_THROW_UNSUPPORTED_OPTION("");
+    }
+
+    template <typename Field>
+    auto register_manual_loading_step(Field&                     f,
+                                      Neon::Pattern              computeE,
+                                      Neon::set::StencilSemantic stencilSemantic)
+    {
+        if constexpr (std::is_const_v<Field>) {
+            auto step = [=](Neon::set::Loader& loader) {
+                const Field& fConstView = f;
+                loader.load(fConstView, computeE, stencilSemantic);
+            };
+            std::function<void(Neon::set::Loader&)> stepFunction = step;
+            m_loadingLambdaSteps.push_back(stepFunction);
+        } else {
+            auto step = [=](Neon::set::Loader& loader) mutable {
+                loader.load(f, computeE, stencilSemantic);
+            };
+            std::function<void(Neon::set::Loader&)> stepFunction = step;
+            m_loadingLambdaSteps.push_back(stepFunction);
+        }
     }
 
 
@@ -149,100 +167,207 @@ struct WarpContainer : Neon::set::internal::ContainerAPI
         [[maybe_unused]] int            streamIdx,
         [[maybe_unused]] Neon::DataView dataView) -> void override
     {
-
-        //         const Neon::Backend&    bk = m_grid.getBackend();
-        //         Neon::set::KernelConfig kernelConfig(dataView, bk, streamIdx, this->getLaunchParameters(dataView));
-        //
-        // #pragma omp critical
-        //         {
-        //             [[maybe_unused]] int const threadRank = omp_get_thread_num();
-        //             NEON_TRACE("TRACE DeviceContainer run rank {} setIdx {} stream {} dw {}",
-        //                        threadRank, setIdx.idx(), kernelConfig.stream(), Neon::DataViewUtil::toString(kernelConfig.dataView()));
-        //         };
-        //
-        //         if (ContainerExecutionType::device == this->getContainerExecutionType()) {
-        //             bk.devSet().template kernelDeviceLambdaWithIterator<DataIteratorContainerT, UserComputeLambdaT>(
-        //                 mExecution,
-        //                 setIdx,
-        //                 kernelConfig,
-        //                 m_dataIteratorContainer,
-        //                 [&](Neon::SetIdx   setIdx,
-        //                     Neon::DataView dataView)
-        //                 -> UserComputeLambdaT {
-        //                     Loader             loader = this->newLoader(setIdx, dataView, LoadingMode_e::EXTRACT_LAMBDA);
-        //                     UserComputeLambdaT userLambda = this->m_loadingLambda(loader);
-        //                     return userLambda;
-        //                 });
-        //             return;
-        //         }
-
         NEON_THROW_UNSUPPORTED_OPTION("");
     }
 
+    auto loadingLambda(Neon::set::Loader& loader) -> void
+    {
+        for (auto loadingStep : m_loadingLambdaSteps) {
+            loadingStep(loader);
+        }
+    }
+
    private:
+    std::vector<std::function<void(Neon::set::Loader&)> > m_loadingLambdaSteps;
+
     Neon::py::CudaDriver*      m_cudaDriver;
     Grid*                      m_gridPtr = nullptr;
     Neon::Backend*             m_backendPtr;
     Neon::Execution            m_execution;
     Neon::set::DataSet<kernel> m_kernels[Neon::DataViewUtil::nConfig];
 };
+
+template <typename Grid>
+struct container_warp_data
+{
+    Neon::py::CudaDriver*          m_cuda_driver_ptr;
+    Grid*                          m_grid_ptr;
+    Neon::py::WarpContainer<Grid>* m_warp_container_ptr;
+    Neon::set::Container*          m_container_prt;
+    Neon::set::Loader*             m_parser_ptr;
+
+   public:
+    container_warp_data(Neon::Execution execution,
+                        void*           cuda_driver_handle,
+                        void*           grid_handle,
+                        void**          kernels_matrix,
+                        Neon::index_3d* /*blockSize*/)
+    {
+        m_cuda_driver_ptr = reinterpret_cast<Neon::py::CudaDriver*>(cuda_driver_handle);
+        m_grid_ptr = reinterpret_cast<Grid*>(grid_handle);
+
+        m_warp_container_ptr = new (std::nothrow)
+            Neon::py::WarpContainer<Neon::dGrid>(
+                execution,
+                m_cuda_driver_ptr,
+                m_grid_ptr,
+                kernels_matrix);
+
+        if (m_warp_container_ptr == nullptr) {
+            Neon::NeonException e("warp_dgrid_container_new");
+            NEON_THROW(e);
+        }
+
+        std::shared_ptr<Neon::set::internal::ContainerAPI> tmp(m_warp_container_ptr);
+        m_container_prt = Neon::set::Container::factoryNewWarp(tmp);
+
+        if (m_container_prt == nullptr) {
+            Neon::NeonException e("warp_dgrid_container_new");
+            NEON_THROW(e);
+        }
+
+        m_parser_ptr = new Neon::set::Loader(*m_warp_container_ptr,
+                                             Neon::Execution::host,
+                                             Neon::SetIdx(0),
+                                             Neon::DataView::STANDARD,
+                                             Neon::set::internal::LoadingMode_e::PARSE_AND_EXTRACT_LAMBDA);
+        if (m_parser_ptr == nullptr) {
+            Neon::NeonException e("warp_dgrid_container_new");
+            NEON_THROW(e);
+        }
+    }
+
+    ~container_warp_data()
+    {
+        delete m_container_prt;
+    }
+};
+
+ auto container_warp_data_get_container_prt(void * data_prt) -> Neon::set::Container*
+ {
+     // We use the type dGrid to instantiate the object.
+     // We could have used any other type as the return value
+     // does not depend on the Grid type.
+     auto data = static_cast<container_warp_data<Neon::dGrid>*>(data_prt);
+     return data->m_container_prt;
+ }
+
 }  // namespace Neon::py
 
 
-extern "C" void warp_dgrid_container_new(
-    void**          out_handle,
+extern "C" auto warp_dgrid_container_new(
+    void**          handle,
     Neon::Execution execution,
     void*           handle_cudaDriver,
     void*           handle_dgrid,
     void**          kernels_matrix,
-    Neon::index_3d* /*blockSize*/)
+    Neon::index_3d* blockSize) -> int
 {
-    NEON_PY_PRINT_BEGIN(*out_handle)
-    auto* cudaDriverPtr =
-        reinterpret_cast<Neon::py::CudaDriver*>(handle_cudaDriver);
+    NEON_PY_PRINT_BEGIN(*handle)
 
-    auto* dGridPtr =
-        reinterpret_cast<Neon::dGrid*>(handle_dgrid);
+    auto data = new (std::nothrow)
+        Neon::py::container_warp_data<Neon::dGrid>(execution,
+                                                   handle_cudaDriver,
+                                                   handle_dgrid,
+                                                   kernels_matrix,
+                                                   blockSize);
 
-    auto warp_container = new (std::nothrow)
-        Neon::py::WarpContainer<Neon::dGrid>(
-            execution,
-            cudaDriverPtr,
-            dGridPtr,
-            kernels_matrix);
-    Neon::set::Container*                              container = nullptr;
-    std::shared_ptr<Neon::set::internal::ContainerAPI> tmp(warp_container);
-
-    container = Neon::set::Container::factoryNewWarp(tmp);
-
-    if (container == nullptr) {
+    if (data == nullptr) {
         Neon::NeonException e("warp_dgrid_container_new");
         NEON_THROW(e);
     }
 
-    *out_handle = reinterpret_cast<void*>(container);
-    NEON_PY_PRINT_END(*out_handle);
+    *handle = reinterpret_cast<void*>(data);
+    NEON_PY_PRINT_END(*handle);
+    return 0;
 }
 
-extern "C" void warp_container_delete(
-    uint64_t** handle)
+extern "C" auto warp_container_delete(
+    void** handle) -> int
 {
+    auto* data = reinterpret_cast<Neon::py::container_warp_data<Neon::dGrid>*>(*handle);
 
-    auto* c = reinterpret_cast<Neon::set::Container*>(*handle);
-
-    if (c != nullptr) {
-        delete c;
+    if (data != nullptr) {
+        delete data;
     }
 
-    (*handle) = 0;
+    (*handle) = nullptr;
+    return 0;
 }
 
-extern "C" void warp_container_run(
+extern "C" auto warp_container_parse(
+    void* handle) -> int
+{
+    auto* data = reinterpret_cast<Neon::py::container_warp_data<Neon::dGrid>*>(handle);
+    data->m_warp_container_ptr->parse();
+    return 0;
+}
+
+extern "C" auto warp_container_run(
     void*          handle,
     int            streamIdx,
-    Neon::DataView dataView)
+    Neon::DataView dataView) -> int
 {
-    auto* c = reinterpret_cast<Neon::set::Container*>(handle);
-
-    c->run(streamIdx, dataView);
+    auto* data = reinterpret_cast<Neon::py::container_warp_data<Neon::dGrid>*>(handle);
+    data->m_container_prt->run(streamIdx, dataView);
+    return 0;
 }
+
+
+#define DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(TYPE, CARD)                                            \
+    extern "C" auto warp_dgrid_container_add_parse_token_##TYPE##_##CARD(                                  \
+        void* handle,                                                                                      \
+        void* field_handle,                                                                                \
+        int   access_int,                                                                                  \
+        int   pattern_int,                                                                                 \
+        int   stencilSemantic_int)                                                                         \
+        ->int                                                                                              \
+    {                                                                                                      \
+        using Field = Neon::dGrid::Field<TYPE, CARD>;                                                      \
+        auto  pattern = Neon::PatternUtils::fromInt(pattern_int);                                          \
+        auto  access = Neon::set::dataDependency::AccessTypeUtils::fromInt(access_int);                    \
+        auto  stenSemantic = Neon::set::StencilSemanticUtils::fromInt(stencilSemantic_int);                \
+        auto* data = reinterpret_cast<Neon::py::container_warp_data<Neon::dGrid>*>(handle);                \
+                                                                                                           \
+        Field* field = reinterpret_cast<Field*>(field_handle);                                             \
+        if (field == nullptr) {                                                                            \
+            Neon::NeonException e("parse_token");                                                          \
+            NEON_THROW(e);                                                                                 \
+        }                                                                                                  \
+                                                                                                           \
+        if (access == Neon::set::dataDependency::AccessType::READ) {                                       \
+            const Field& parsingField = *field;                                                            \
+            data->m_warp_container_ptr->register_manual_loading_step(parsingField, pattern, stenSemantic); \
+        } else {                                                                                           \
+            Field& parsingField = *field;                                                                  \
+            data->m_warp_container_ptr->register_manual_loading_step(parsingField, pattern, stenSemantic); \
+        }                                                                                                  \
+        return 0;                                                                                          \
+    }
+
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 0)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 1)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 2)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 3)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 4)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 5)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 19)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(int, 27)
+
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 0)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 1)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 2)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 3)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 4)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 5)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 19)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(float, 27)
+
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 0)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 1)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 2)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 3)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 4)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 5)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 19)
+DEFINE_WARP_DGRID_CONTAINER_ADD_PARSE_TOKEN(double, 27)

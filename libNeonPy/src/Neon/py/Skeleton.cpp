@@ -14,15 +14,17 @@
 
 #include "Neon/py/macros.h"
 #include "Neon/skeleton/Skeleton.h"
-
-extern "C" auto warp_skeleton_new(
+namespace Neon::py {
+extern auto container_warp_data_get_container_prt(void *) -> Neon::set::Container*;
+}
+extern "C" auto neon_skeleton_new(
     void** out_handle,
     void*  bkPtr) -> int
 {
     NEON_PY_PRINT_BEGIN(*out_handle);
 
     Neon::Backend& bk = *static_cast<Neon::Backend*>(bkPtr);
-    std::cout << "warp_skeleton_new "
+    std::cout << "neon_skeleton_new "
               << "bk " << bkPtr << " " << bk.toString() << std::endl;
     auto* skeleton = new (std::nothrow) Neon::skeleton::Skeleton(bk);
     if (skeleton == nullptr) {
@@ -33,7 +35,7 @@ extern "C" auto warp_skeleton_new(
     return 0;
 }
 
-extern "C" auto warp_skeleton_delete(
+extern "C" auto neon_skeleton_delete(
     void** out_handle) -> int
 {
     try {
@@ -46,40 +48,27 @@ extern "C" auto warp_skeleton_delete(
     }
 }
 
-extern "C" void warp_skeleton_sequence(
-    void*                  handle,
-    const char*            graphName,
-    int                    numContainers,
-    Neon::set::Container** containers)
+extern "C" void neon_skeleton_sequence(
+    void*       handle,
+    const char* graphName,
+    int         numContainers,
+    void**      container_warp_data_array_ptr)
 {
-    // # Load the shared library
-    // # On Linux
-    //     lib = ctypes.CDLL('./libexample.so')
-    //
-    //     # On Windows
-    //     # lib = ctypes.CDLL('example.dll')
-    //
-    //     # Define the argument type for the C++ function
-    //     lib.print_message.argtypes = [ctypes.c_char_p]
-    //
-    //     # Convert Python string to bytes (C char array)
-    //     message = "Hello from Python".encode('utf-8')
-    //
-    //     # Call the C++ function
-    //     lib.print_message(message)
     NEON_PY_PRINT_BEGIN(handle);
 
     Neon::skeleton::Skeleton*         skeleton = static_cast<Neon::skeleton::Skeleton*>(handle);
     std::string                       name(graphName);
     std::vector<Neon::set::Container> operations;
     for (int i = 0; i < numContainers; i++) {
-        operations.push_back(*containers[i]);
+        auto data_ptr = container_warp_data_array_ptr[i];
+        auto container_prt = Neon::py::container_warp_data_get_container_prt(data_ptr);
+        operations.push_back(*container_prt);
     }
     skeleton->sequence(operations, name, Neon::skeleton::Options());
     NEON_PY_PRINT_END(handle);
 }
 
-extern "C" auto warp_skeleton_run(
+extern "C" auto neon_skeleton_run(
     void* handle) -> int
 {
     try {
@@ -91,7 +80,7 @@ extern "C" auto warp_skeleton_run(
     }
 }
 
-extern "C" auto warp_skeleton_ioToDot(
+extern "C" auto neon_skeleton_ioToDot(
     void*       handle,
     const char* fname,
     const char* gname,

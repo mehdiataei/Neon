@@ -1,7 +1,6 @@
 #include "Neon/set/StencilSemantic.h"
 
 namespace Neon::set {
-
 auto StencilSemanticUtils::toString(StencilSemantic option) -> std::string
 {
     switch (option) {
@@ -22,6 +21,17 @@ auto StencilSemanticUtils::fromString(const std::string& occ) -> StencilSemantic
         if (toString(a) == occ) {
             return a;
         }
+    }
+    NEON_THROW_UNSUPPORTED_OPTION("");
+}
+
+auto StencilSemanticUtils::fromInt(int val) -> StencilSemantic
+{
+    switch (val) {
+        case 0:
+            return StencilSemantic::standard;
+        case 1:
+            return StencilSemantic::lattice;
     }
     NEON_THROW_UNSUPPORTED_OPTION("");
 }
@@ -106,7 +116,7 @@ auto StencilSemanticUtils::Cli::getStringOption() const -> std::string
     return StencilSemanticUtils::toString(mOption);
 }
 
-auto StencilSemanticUtils::Cli::getDoc() const-> std::string
+auto StencilSemanticUtils::Cli::getDoc() const -> std::string
 {
     std::stringstream s;
     s << getStringOptions();

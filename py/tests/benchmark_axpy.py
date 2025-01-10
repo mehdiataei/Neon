@@ -57,10 +57,10 @@ def warp_AXPY(
 @neon.Container.factory(name = "AXPY")
 def get_AXPY(f_X, f_Y, alpha_: Any):
     def axpy(loader: neon.Loader):
-        loader.declare_execution_scope(f_Y.get_grid())
+        loader.set_grid(f_Y.get_grid())
 
-        f_x = loader.get_read_handel(f_X)
-        f_y = loader.get_read_handel(f_Y)
+        f_x = loader.get_read_handle(f_X)
+        f_y = loader.get_read_handle(f_Y)
         alpha = f_X.dtype(2)
         max_c = wp.int32(f_X.get_cardinality())
         # try:
@@ -81,10 +81,10 @@ def get_AXPY(f_X, f_Y, alpha_: Any):
 @neon.Container.factory()
 def set_to_random(f_X, f_Y):
     def axpy(loader: neon.Loader):
-        loader.declare_execution_scope(f_Y.get_grid())
+        loader.set_grid(f_Y.get_grid())
 
-        f_x = loader.get_read_handel(f_X)
-        f_y = loader.get_read_handel(f_Y)
+        f_x = loader.get_read_handle(f_X)
+        f_y = loader.get_read_handle(f_Y)
         max_c = int(f_X.get_cardinality())
         dtype = f_X.dtype
 
