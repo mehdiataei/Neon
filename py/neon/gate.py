@@ -1,5 +1,6 @@
 import ctypes
 import os
+import warp as wp
 
 
 class Gate(object):
@@ -17,19 +18,17 @@ class Gate(object):
             print(f"Failed to load library: {lib_path}")
             raise e
 
-        import warp as wp
-
         self.to_warp_types = {
             "bool": wp.bool,
             "int8": wp.int8,
             "uint8": wp.uint8,
-            "int16": wp.int16,
-            "uint16": wp.uint16,
+            # "int16": wp.int16,
+            # "uint16": wp.uint16,
             "int32": wp.int32,
             "uint32": wp.uint32,
             "int64": wp.int64,
             "uint64": wp.uint64,
-            "float16": wp.float16,
+            # "float16": wp.float16,
             "float32": wp.float32,  # alias: float
             "float64": wp.float64,  # alias: double
             "float": wp.float32,  # alias for float32
@@ -79,3 +78,23 @@ class Gate(object):
             "float": ctypes.c_float,  # alias for float32
             "int": ctypes.c_int32,  # alias for int32
         }
+
+
+    def get_type_mapping(self, warp_type):
+        # returns the corresponding ctypes type
+        ret = {}
+        try:
+            ret['suffix']= self._get_suffix(warp_type)
+            ret['ctype']= self.to_ctypes[ret['suffix']]
+            ret['warp'] = warp_type
+            return ret
+        except Exception as e:
+            raise Exception(f"Unsupported warp type. {warp_type}: {str(e)}")
+
+
+    def _get_supported_wp_types(self):
+        # returns all values from the to_warp_types dictionary
+        return list(self.to_warp_types.values())
+
+    def _get_suffix(self, wpType):
+        return self.warp_type_to_string[wpType]

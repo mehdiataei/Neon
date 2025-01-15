@@ -36,35 +36,10 @@ class dField(object):
         pass
 
     def _set_field_type(self):
-        def _set_via_suffix(suffix):
-            s_native, s_wp, s_cytpes = suffix
-            is_native = self.dtype == s_native
-            is_ctypes = s_wp == self.dtype
-            is_warp = self.dtype == s_cytpes
-            if (is_native or is_warp or is_ctypes):
-                self.suffix = f'_{s_native}'
-                self.field_type = s_cytpes
-                self.Partition_type = getattr(neon.dense.dPartition, f'dPartition{self.suffix}')
-                return True
-            return False
+        self.type_mapping = self.neon_gate.get_type_mapping(self.dtype)
+        self.suffix = f'_{self.type_mapping["suffix"]}'
+        self.Partition_type = getattr(neon.dense.dPartition, f'dPartition{self.suffix}')
 
-        supported_suffixes = [('bool', wp.bool, ctypes.c_bool),
-                              ('int8', wp.int8, ctypes.c_int8),
-                                ('uint8', wp.uint8, ctypes.c_uint8),
-                                ('int32', wp.int32, ctypes.c_int32),
-                                ('uint32', wp.uint32, ctypes.c_uint32),
-                                ('int64', wp.int64, ctypes.c_int64),
-                                ('uint64', wp.uint64, ctypes.c_uint64),
-                                ('float32', wp.float32, ctypes.c_float),
-                                ('float64', wp.float64, ctypes.c_double)]
-        match_found = False
-        for suffix in supported_suffixes:
-
-            match_found = _set_via_suffix(suffix)
-            if match_found:
-                break
-        if not match_found:
-            raise Exception(f'dField: Unsupported data type ({self.dtype})')
 
     def _help_load_api(self):
         # Importing new functions
@@ -104,14 +79,14 @@ class dField(object):
         self.api_read.argtypes = [self.handle_type,
                                   ctypes.POINTER(neon.Index_3d),
                                   ctypes.c_int]
-        self.api_read.restype = self.field_type
+        self.api_read.restype = self.type_mapping["ctype"]
 
         # field write
         self.api_write = getattr(lib_obj, f'dGrid_dField_write{self.suffix}')
         self.api_write.argtypes = [self.handle_type,
                                    ctypes.POINTER(neon.Index_3d),
                                    ctypes.c_int,
-                                   self.field_type]
+                                   self.type_mapping["ctype"]]
         self.api_write.restype = ctypes.c_int
 
         # field update host data
@@ -189,7 +164,7 @@ class dField(object):
         return self.api_write(self.handle,
                               idx,
                               cardinality,
-                              self.field_type(newValue))
+                              self.type_mapping['ctype'](newValue))
 
     def update_host(self, streamSetId: ctypes.c_int):
         return self.api_update_host(self.handle,
