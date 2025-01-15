@@ -26,7 +26,6 @@ class dField(object):
         self.grid_handle = grid_handle
         self.cardinality = cardinality
         self.py_grid = py_grid
-        self.field_type = None
         self._set_field_type()
         self._help_load_api()
         self._help_field_new()
