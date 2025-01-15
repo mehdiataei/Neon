@@ -17,3 +17,65 @@ class Gate(object):
             print(f"Failed to load library: {lib_path}")
             raise e
 
+        import warp as wp
+
+        self.to_warp_types = {
+            "bool": wp.bool,
+            "int8": wp.int8,
+            "uint8": wp.uint8,
+            "int16": wp.int16,
+            "uint16": wp.uint16,
+            "int32": wp.int32,
+            "uint32": wp.uint32,
+            "int64": wp.int64,
+            "uint64": wp.uint64,
+            "float16": wp.float16,
+            "float32": wp.float32,  # alias: float
+            "float64": wp.float64,  # alias: double
+            "float": wp.float32,  # alias for float32
+            "int": wp.int32,  # alias for int32
+        }
+
+        self.warp_type_to_string = {
+            wp.bool: "bool",
+            wp.int8: "int8",
+            wp.uint8: "uint8",
+            wp.int16: "int16",
+            wp.uint16: "uint16",
+            wp.int32: "int32",
+            wp.uint32: "uint32",
+            wp.int64: "int64",
+            wp.uint64: "uint64",
+            wp.float16: "float16",
+            wp.float32: "float32",
+            wp.float64: "float64",
+        }
+
+        self.warp_type_to_cpp_type_string = {
+            wp.bool: "bool",
+            wp.int8: "int8_t",
+            wp.uint8: "uint8_t",
+            wp.int32: "int32_t",
+            wp.uint32: "uint32_t",
+            wp.int64: "int64_t",
+            wp.uint64: "uint64_t",
+            wp.float32: "float",
+            wp.float64: "double",
+        }
+        # Dictionary mapping basic scalar types to ctypes types
+        self.to_ctypes = {
+            "bool": ctypes.c_bool,
+            "int8": ctypes.c_int8,
+            "uint8": ctypes.c_uint8,
+            "int16": ctypes.c_int16,
+            "uint16": ctypes.c_uint16,
+            "int32": ctypes.c_int32,
+            "uint32": ctypes.c_uint32,
+            "int64": ctypes.c_int64,
+            "uint64": ctypes.c_uint64,
+            "float16": None,  # ctypes has no built-in half-precision float type
+            "float32": ctypes.c_float,  # single-precision
+            "float64": ctypes.c_double,  # double-precision
+            "float": ctypes.c_float,  # alias for float32
+            "int": ctypes.c_int32,  # alias for int32
+        }

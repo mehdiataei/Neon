@@ -4,8 +4,8 @@
 #include <nvtx3/nvToolsExt.h>
 #include "Neon/domain/Grids.h"
 #include "Neon/py/AllocationCounter.h"
+#include "Neon/py/macros.h"
 #include "Neon/set/Backend.h"
-
 auto dGrid_new(
     void**                handle,
     void*                 backendPtr,
@@ -28,17 +28,15 @@ auto dGrid_new(
         return -1;
     }
 
-    Neon::domain::Stencil d3q19 = Neon::domain::Stencil::s19_t(false);
-
     std::vector<Neon::index_3d> points(numStencilPoints);
     for (int sId = 0; sId < numStencilPoints; sId++) {
         points[sId].x = stencilPointFlatArray[sId * 3];
         points[sId].y = stencilPointFlatArray[sId * 3 + 1];
         points[sId].z = stencilPointFlatArray[sId * 3 + 2];
     }
-
     Neon::domain::Stencil stencil(points);
-    Grid                  g(
+
+    Grid g(
         *backend,
         *dim,
         [=](Neon::index_3d const& idx) {
@@ -138,88 +136,6 @@ auto dGrid_get_span(
     return -1;
     NEON_PY_PRINT_END(gridHandle);
 }
-#define NEON_PY_GET_EVEN_PARAMS_1(a)
-#define NEON_PY_GET_EVEN_PARAMS_2(a, b, ...) b, NEON_PY_GET_EVEN_PARAMS_1(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_3(a, b, c, ...) b, NEON_PY_GET_EVEN_PARAMS_2(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_4(a, b, c, d, ...) b, NEON_PY_GET_EVEN_PARAMS_3(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_5(a, b, c, d, e, ...) b, NEON_PY_GET_EVEN_PARAMS_4(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_6(a, b, c, d, e, f, ...) b, NEON_PY_GET_EVEN_PARAMS_5(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_7(a, b, c, d, e, f, g, ...) b, NEON_PY_GET_EVEN_PARAMS_6(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_8(a, b, c, d, e, f, g, h, ...) b, NEON_PY_GET_EVEN_PARAMS_7(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_9(a, b, c, d, e, f, g, h, i, ...) b, NEON_PY_GET_EVEN_PARAMS_8(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_10(a, b, c, d, e, f, g, h, i, j, ...) b, NEON_PY_GET_EVEN_PARAMS_9(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_11(a, b, c, d, e, f, g, h, i, j, k, ...) b, NEON_PY_GET_EVEN_PARAMS_10(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_12(a, b, c, d, e, f, g, h, i, j, k, l, ...) b, NEON_PY_GET_EVEN_PARAMS_11(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_13(a, b, c, d, e, f, g, h, i, j, k, l, m, ...) b, NEON_PY_GET_EVEN_PARAMS_12(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_14(a, b, c, d, e, f, g, h, i, j, k, l, m, n, ...) b, NEON_PY_GET_EVEN_PARAMS_13(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_15(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, ...) b, NEON_PY_GET_EVEN_PARAMS_14(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_16(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, ...) b, NEON_PY_GET_EVEN_PARAMS_15(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_17(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, ...) b, NEON_PY_GET_EVEN_PARAMS_16(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_18(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, ...) b, NEON_PY_GET_EVEN_PARAMS_17(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_19(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, ...) b, NEON_PY_GET_EVEN_PARAMS_18(__VA_ARGS__)
-#define NEON_PY_GET_EVEN_PARAMS_20(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, ...) b, NEON_PY_GET_EVEN_PARAMS_19(__VA_ARGS__)
-
-// Main macro to select the correct GET_EVEN_PARAMS_X macro based on the number of arguments
-#define NEON_PY_GET_EVEN_PARAMS(N, ...) NEON_PY_GET_EVEN_PARAMS##N(__VA_ARGS__)
-
-
-// Base case: No more pairs to process
-#define EXTRACT_NAMES_0()
-
-// Recursive macros to extract variable names
-#define EXTRACT_NAMES_1(TYPE1, NAME1) NAME1
-#define EXTRACT_NAMES_2(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_1(__VA_ARGS__)
-#define EXTRACT_NAMES_3(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_2(__VA_ARGS__)
-#define EXTRACT_NAMES_4(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_3(__VA_ARGS__)
-#define EXTRACT_NAMES_5(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_4(__VA_ARGS__)
-#define EXTRACT_NAMES_6(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_5(__VA_ARGS__)
-#define EXTRACT_NAMES_7(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_6(__VA_ARGS__)
-#define EXTRACT_NAMES_8(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_7(__VA_ARGS__)
-#define EXTRACT_NAMES_9(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_8(__VA_ARGS__)
-#define EXTRACT_NAMES_10(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_9(__VA_ARGS__)
-#define EXTRACT_NAMES_11(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_10(__VA_ARGS__)
-#define EXTRACT_NAMES_12(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_11(__VA_ARGS__)
-#define EXTRACT_NAMES_13(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_12(__VA_ARGS__)
-#define EXTRACT_NAMES_14(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_13(__VA_ARGS__)
-#define EXTRACT_NAMES_15(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_14(__VA_ARGS__)
-#define EXTRACT_NAMES_16(TYPE1, NAME1, ...) NAME1, EXTRACT_NAMES_15(__VA_ARGS__)
-
-// Main macro to select the correct EXTRACT_NAMES_X macro based on the number of pairs
-#define EXTRACT_NAMES(N, ...) EXTRACT_NAMES_##N(__VA_ARGS__)
-
-
-// Helper macro to create a single parameter from a TYPE and VARIABLE_NAME pair
-#define PAIR(TYPE, NAME) TYPE NAME
-
-// Recursive macros to handle multiple pairs, ensuring no trailing commas
-#define EXPAND_PAIR_1(TYPE1, NAME1) PAIR(TYPE1, NAME1)
-#define EXPAND_PAIR_2(TYPE1, NAME1, TYPE2, NAME2) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2)
-#define EXPAND_PAIR_3(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3)
-#define EXPAND_PAIR_4(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4)
-#define EXPAND_PAIR_5(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5)
-#define EXPAND_PAIR_6(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6)
-#define EXPAND_PAIR_7(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7)
-#define EXPAND_PAIR_8(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8)
-#define EXPAND_PAIR_9(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9)
-#define EXPAND_PAIR_10(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10)
-#define EXPAND_PAIR_11(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10, TYPE11, NAME11) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10), PAIR(TYPE11, NAME11)
-#define EXPAND_PAIR_12(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10, TYPE11, NAME11, TYPE12, NAME12) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10), PAIR(TYPE11, NAME11), PAIR(TYPE12, NAME12)
-#define EXPAND_PAIR_13(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10, TYPE11, NAME11, TYPE12, NAME12, TYPE13, NAME13) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10), PAIR(TYPE11, NAME11), PAIR(TYPE12, NAME12), PAIR(TYPE13, NAME13)
-#define EXPAND_PAIR_14(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10, TYPE11, NAME11, TYPE12, NAME12, TYPE13, NAME13, TYPE14, NAME14) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10), PAIR(TYPE11, NAME11), PAIR(TYPE12, NAME12), PAIR(TYPE13, NAME13), PAIR(TYPE14, NAME14)
-#define EXPAND_PAIR_15(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10, TYPE11, NAME11, TYPE12, NAME12, TYPE13, NAME13, TYPE14, NAME14, TYPE15, NAME15) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10), PAIR(TYPE11, NAME11), PAIR(TYPE12, NAME12), PAIR(TYPE13, NAME13), PAIR(TYPE14, NAME14), PAIR(TYPE15, NAME15)
-#define EXPAND_PAIR_16(TYPE1, NAME1, TYPE2, NAME2, TYPE3, NAME3, TYPE4, NAME4, TYPE5, NAME5, TYPE6, NAME6, TYPE7, NAME7, TYPE8, NAME8, TYPE9, NAME9, TYPE10, NAME10, TYPE11, NAME11, TYPE12, NAME12, TYPE13, NAME13, TYPE14, NAME14, TYPE15, NAME15, TYPE16, NAME16) PAIR(TYPE1, NAME1), PAIR(TYPE2, NAME2), PAIR(TYPE3, NAME3), PAIR(TYPE4, NAME4), PAIR(TYPE5, NAME5), PAIR(TYPE6, NAME6), PAIR(TYPE7, NAME7), PAIR(TYPE8, NAME8), PAIR(TYPE9, NAME9), PAIR(TYPE10, NAME10), PAIR(TYPE11, NAME11), PAIR(TYPE12, NAME12), PAIR(TYPE13, NAME13), PAIR(TYPE14, NAME14), PAIR(TYPE15, NAME15), PAIR(TYPE16, NAME16)
-
-// Macro to select the correct EXPAND_PAIR_X macro based on the number of pairs (N)
-#define EXPAND_PAIRS(N, ...) EXPAND_PAIR_##N(__VA_ARGS__)
-
-// Helper macro to remove parentheses
-#define UNPAREN(...) __VA_ARGS__
-
-#define DO_EXPORT(TYPE, N, FOO_NAME, RET, ...)                           \
-    extern "C" auto FOO_NAME##_##TYPE(EXPAND_PAIRS(N, __VA_ARGS__))->RET \
-    {                                                                    \
-        return FOO_NAME<TYPE>(EXTRACT_NAMES(N, __VA_ARGS__));            \
-    }
 
 
 template <typename T>
@@ -239,7 +155,7 @@ auto dGrid_dField_new(
 
         using Field = Grid::Field<T, 0>;
         Field field = grid.newField<T, 0>("test", cardinality, 0, Neon::DataUse::HOST_DEVICE);
-        //std::cout << field.toString() << std::endl;
+        // std::cout << field.toString() << std::endl;
 
         Field* fieldPtr = new (std::nothrow) Field(field);
         AllocationCounter::Allocation();
@@ -257,18 +173,6 @@ auto dGrid_dField_new(
 
     return -1;
 }
-
-using int8 = int8_t;
-using uint8 = uint8_t;
-
-using int32 = int32_t;
-using uint32 = uint32_t;
-
-using int64 = int64_t;
-using uint64 = uint64_t;
-
-using float32 = float;
-using float64 = double;
 
 
 DO_EXPORT(int8, 3, dGrid_dField_new, int, void**, handle, void*, gridHandle, int, cardinality);
@@ -344,13 +248,7 @@ auto dGrid_dField_get_partition(
         auto p = fieldPtr->getPartition(execution,
                                         device,
                                         data_view);
-        // std::cout << p.cardinality() << std::endl;
         *partitionPtr = p;
-        // std::cout << "dGrid_dField_get_partition\n"
-        //     << partitionPtr->to_string();
-
-        // std::cout << "dGrid_dField_get_partition - END" << std::endl;
-
         return 0;
         NEON_PY_PRINT_END(field_handle);
     }
@@ -593,9 +491,9 @@ DO_EXPORT(float64, 2, dGrid_dField_update_device_data, int, void*, fieldHandle, 
 
 template <typename T>
 auto dGrid_dField_to_vti(
-    void*         fieldHandle,
-    const char*  fname,
-    const char*   fieldName)
+    void*       fieldHandle,
+    const char* fname,
+    const char* fieldName)
     -> int
 {
 #ifdef NEON_USE_NVTX
@@ -619,7 +517,7 @@ auto dGrid_dField_to_vti(
     //                      bool               includeDomain = false,
     //                      Neon::IoFileType   ioFileType = Neon::IoFileType::ASCII,
     //                      bool               isNodeSpace = false
-    //fieldPtr->updateHostData(streamSetId);
+    // fieldPtr->updateHostData(streamSetId);
 
 #ifdef NEON_USE_NVTX
     nvtxRangePop();
@@ -629,18 +527,18 @@ auto dGrid_dField_to_vti(
     return 0;
 }
 
-DO_EXPORT(int8, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
-DO_EXPORT(uint8,3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
-DO_EXPORT(bool, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(int8, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
+DO_EXPORT(uint8, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
+DO_EXPORT(bool, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
 
-DO_EXPORT(int32,3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
-DO_EXPORT(uint32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(int32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
+DO_EXPORT(uint32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
 
-DO_EXPORT(int64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
-DO_EXPORT(uint64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(int64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
+DO_EXPORT(uint64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
 
-DO_EXPORT(float32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
-DO_EXPORT(float64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname,  const char*,fieldName);
+DO_EXPORT(float32, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
+DO_EXPORT(float64, 3, dGrid_dField_to_vti, int, void*, fieldHandle, const char*, fname, const char*, fieldName);
 
 
 extern "C" auto dGrid_dSpan_get_member_field_offsets(size_t* offsets,

@@ -52,12 +52,6 @@ class dGrid(object):
         self.sparsity = sparsity
         self.stencil = stencil
 
-        try:
-            self.neon_gate: neon.Gate = neon.Gate()
-        except Exception as e:
-            self.grid_handle: ctypes.c_uint64 = ctypes.c_void_p(0)
-            raise Exception('Failed to initialize PyNeon: ' + str(e))
-
         self._help_load_api()
         self._help_grid_new()
 
@@ -66,40 +60,53 @@ class dGrid(object):
             self._help_grid_delete()
 
     def _help_load_api(self):
+        try:
+            self.neon_gate: neon.Gate = neon.Gate()
+        except Exception as e:
+            self.grid_handle: ctypes.c_uint64 = ctypes.c_void_p(0)
+            raise Exception('Failed to initialize PyNeon: ' + str(e))
 
-        self.neon_gate.lib.dGrid_new.argtypes = [self.neon_gate.handle_type,
-                                               self.neon_gate.handle_type,
-                                               ctypes.POINTER(neon.Index_3d),
-                                               ctypes.POINTER(ctypes.c_int),
-                                               ctypes.c_int,
-                                               ctypes.POINTER(ctypes.c_int)]
-        self.neon_gate.lib.dGrid_new.restype = ctypes.c_int
+        lib = self.neon_gate.lib
+        self.api_new = lib.dGrid_new
+        self.api_new.argtypes = [ctypes.POINTER(self.neon_gate.handle_type),
+                                 self.neon_gate.handle_type,
+                                 ctypes.POINTER(neon.Index_3d),
+                                 ctypes.POINTER(ctypes.c_int),
+                                 ctypes.c_int,
+                                 ctypes.POINTER(ctypes.c_int)]
+        self.api_new.restype = ctypes.c_int
         # ---
-        self.neon_gate.lib.dGrid_delete.argtypes = [self.neon_gate.handle_type]
-        self.neon_gate.lib.dGrid_delete.restype = ctypes.c_int
+        self.api_delete = lib.dGrid_delete
+        self.api_delete.argtypes = [ctypes.POINTER(self.neon_gate.handle_type)]
+        self.api_delete.restype = ctypes.c_int
         # ---
-        self.neon_gate.lib.dGrid_get_dimensions.argtypes = [self.neon_gate.handle_type,
-                                                          ctypes.POINTER(neon.Index_3d)]
-        self.neon_gate.lib.dGrid_get_dimensions.restype = ctypes.c_int
+        self.api_get_dimensions = lib.dGrid_get_dimensions
+        self.api_get_dimensions.argtypes = [self.neon_gate.handle_type,
+                                            ctypes.POINTER(neon.Index_3d)]
+        self.api_get_dimensions.restype = ctypes.c_int
         # ---
-        self.neon_gate.lib.dGrid_get_span.argtypes = [self.neon_gate.handle_type,
-                                                    ctypes.POINTER(dSpan),  # the span object
-                                                    neon.Execution,  # the execution type
-                                                    ctypes.c_int,  # the device id
-                                                    neon.DataView,  # the data view
-                                                    ]
-        self.neon_gate.lib.dGrid_get_span.restype = ctypes.c_int
+        self.api_get_span = lib.dGrid_get_span
+        self.api_get_span.argtypes = [self.neon_gate.handle_type,
+                                      ctypes.POINTER(dSpan),  # the span object
+                                      neon.Execution,  # the execution type
+                                      ctypes.c_int,  # the device id
+                                      neon.DataView,  # the data view
+                                      ]
+        self.api_get_span.restype = ctypes.c_int
         # ---
-        self.neon_gate.lib.dGrid_span_size.argtypes = [ctypes.POINTER(dSpan)]
-        self.neon_gate.lib.dGrid_span_size.restype = ctypes.c_int
+        self.api_span_size = lib.dGrid_span_size
+        self.api_span_size.argtypes = [ctypes.POINTER(dSpan)]
+        self.api_span_size.restype = ctypes.c_int
         # ---
-        self.neon_gate.lib.dGrid_get_properties.argtypes = [self.neon_gate.handle_type,
-                                                          ctypes.POINTER(neon.Index_3d)]
-        self.neon_gate.lib.dGrid_get_properties.restype = ctypes.c_int
+        self.api_get_properties = lib.dGrid_get_properties
+        self.api_get_properties.argtypes = [self.neon_gate.handle_type,
+                                            ctypes.POINTER(neon.Index_3d)]
+        self.api_get_properties.restype = ctypes.c_int
         # ---
-        self.neon_gate.lib.dGrid_is_inside_domain.argtypes = [self.neon_gate.handle_type,
-                                                            ctypes.POINTER(neon.Index_3d)]
-        self.neon_gate.lib.dGrid_is_inside_domain.restype = ctypes.c_bool
+        self.api_is_inside_domain = lib.dGrid_is_inside_domain
+        self.api_is_inside_domain.argtypes = [self.neon_gate.handle_type,
+                                              ctypes.POINTER(neon.Index_3d)]
+        self.api_is_inside_domain.restype = ctypes.c_bool
 
     def _help_grid_new(self):
 
@@ -115,18 +122,18 @@ class dGrid(object):
             stencil_array[a_idx + 2] = s[2]
 
         sparsity_array = self.sparsity.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
-        res = self.neon_gate.lib.dGrid_new(ctypes.pointer(self.grid_handle),
-                                         self.backend.backend_handle,
-                                         self.dim,
-                                         sparsity_array,
-                                         len(self.stencil),
-                                         stencil_array)
+        res = self.api_new(ctypes.pointer(self.grid_handle),
+                                           self.backend.backend_handle,
+                                           self.dim,
+                                           sparsity_array,
+                                           len(self.stencil),
+                                           stencil_array)
         if res != 0:
             raise Exception('dGrid: Failed to initialize grid')
         #print(f"dGrid initialized with handle {self.grid_handle.value}")
 
     def _help_grid_delete(self):
-        if self.neon_gate.lib.dGrid_delete(ctypes.pointer(self.grid_handle)) != 0:
+        if self.api_delete(ctypes.pointer(self.grid_handle)) != 0:
             raise Exception('Failed to delete grid')
 
     def get_python_dimensions(self):
@@ -134,7 +141,7 @@ class dGrid(object):
 
     def get_cpp_dimensions(self):
         cpp_dim = Index_3d(0, 0, 0)
-        res = self.neon_gate.lib.dGrid_get_dimensions(ctypes.byref(self.grid_handle), cpp_dim)
+        res = self.api_get_dimensions(ctypes.byref(self.grid_handle), cpp_dim)
         if res != 0:
             raise Exception('DGrid: Failed to obtain grid dimension')
 
@@ -160,15 +167,15 @@ class dGrid(object):
 
         span = dSpan()
         dev_idx_ctypes = ctypes.c_int(dev_idx)
-        res = self.neon_gate.lib.dGrid_get_span(self.grid_handle,
-                                              span,
-                                              execution,
-                                              dev_idx_ctypes,
-                                              data_view)
+        res = self.api_get_span(self.grid_handle,
+                                                span,
+                                                execution,
+                                                dev_idx_ctypes,
+                                                data_view)
         if res != 0:
             raise Exception('Failed to get span')
 
-        cpp_size = self.neon_gate.lib.dGrid_span_size(span)
+        cpp_size = self.api_span_size(span)
         ctypes_size = ctypes.sizeof(span)
 
         if cpp_size != ctypes_size:
@@ -177,10 +184,10 @@ class dGrid(object):
         return span
 
     def get_properties(self, idx: Index_3d):
-        return DataView(self.neon_gate.lib.dGrid_get_properties(ctypes.byref(self.grid_handle), idx))
+        return DataView(self.api_get_properties(ctypes.byref(self.grid_handle), idx))
 
     def is_inside_domain(self, idx: Index_3d):
-        return self.neon_gate.lib.dGrid_is_inside_domain(ctypes.byref(self.grid_handle), idx)
+        return self.api_is_inside_domain(ctypes.byref(self.grid_handle), idx)
 
     def get_backend(self):
         return self.backend
